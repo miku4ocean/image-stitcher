@@ -322,8 +322,8 @@
       <tr><th>面向</th><th>風險</th><th>對策</th><th>狀態</th></tr>
       <tr><td>資料外洩</td><td><span class="risk l">低</span></td><td>純前端、無上傳，架構上排除</td><td><span class="pill done">已具備</span></td></tr>
       <tr><td>檔名 XSS</td><td><span class="risk h">高</span></td><td><code>escapeHtml()</code> 轉義後插入 DOM</td><td><span class="pill done">已修正</span></td></tr>
-      <tr><td>CSP 注入</td><td><span class="risk m">中</span></td><td>加 <code>Content-Security-Policy</code> meta 限制來源</td><td><span class="pill todo">階段2加入</span></td></tr>
-      <tr><td>記憶體 DoS</td><td><span class="risk m">中</span></td><td>張數／總像素上限 + 友善提示</td><td><span class="pill todo">待實作</span></td></tr>
+      <tr><td>CSP 注入</td><td><span class="risk m">中</span></td><td>加 <code>Content-Security-Policy</code> meta 限制來源</td><td><span class="pill done">已具備</span></td></tr>
+      <tr><td>記憶體 DoS</td><td><span class="risk m">中</span></td><td>張數／總像素上限 + 友善提示</td><td><span class="pill done">已具備</span></td></tr>
       <tr><td>檔案類型偽造</td><td><span class="risk l">低</span></td><td>MIME 檢查 + Image() 解碼二次把關</td><td><span class="pill done">已具備</span></td></tr>
       <tr><td>本機殘留</td><td><span class="risk l">低</span></td><td>不用 localStorage，重整即清空</td><td><span class="pill done">已具備</span></td></tr>
       <tr><td>傳輸加密</td><td><span class="risk l">低</span></td><td>GitHub Pages 強制 HTTPS</td><td><span class="pill done">部署即得</span></td></tr>

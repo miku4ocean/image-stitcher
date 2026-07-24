@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圖片拼接工具 — Mockup 與設計規格</title>
+<style>
+  :root{
+    --brand:#00CED1; --brand-deep:#0FA3A6; --ink:#1f2d3d; --muted:#6c7a89;
+    --line:#e3e8ee; --bg:#f4f7f9; --card:#fff;
+    --ux:#2563eb; --ux-bg:#eef4ff; --sec:#c0392b; --sec-bg:#fdeeec;
+    --ok:#27ae60;
+    --shadow:0 6px 24px rgba(31,45,61,.08);
+    font-synthesis:none;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"Microsoft JhengHei","PingFang TC",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.7;}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px;}
+  header.top{text-align:center;padding:36px 0 8px;}
+  header.top .badge{display:inline-block;font-size:.8rem;letter-spacing:.08em;color:var(--brand-deep);background:#e6fbfb;border:1px solid #bff0f0;padding:4px 14px;border-radius:999px;margin-bottom:14px;}
+  header.top h1{font-size:1.9rem;font-weight:700;letter-spacing:-.01em;}
+  header.top p{color:var(--muted);margin-top:8px;font-size:.98rem;}
+
+  nav.toc{position:sticky;top:0;z-index:20;background:rgba(244,247,249,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin:26px -20px 0;padding:12px 20px;display:flex;gap:8px;overflow-x:auto;}
+  nav.toc a{white-space:nowrap;font-size:.85rem;color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:8px;border:1px solid transparent;}
+  nav.toc a:hover{color:var(--ink);border-color:var(--line);background:#fff;}
+
+  section.screen{margin-top:44px;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);}
+  .screen-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .screen-head .num{font-size:.8rem;font-weight:700;color:#fff;background:var(--brand-deep);width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;}
+  .screen-head h2{font-size:1.25rem;}
+  .screen-head .en{color:var(--muted);font-size:.85rem;font-weight:400;}
+  .screen-body{display:grid;grid-template-columns:minmax(280px,1fr) 1fr;gap:0;}
+  @media(max-width:820px){.screen-body{grid-template-columns:1fr;}}
+
+  /* phone frame */
+  .stage{padding:26px;background:linear-gradient(160deg,#eef3f5,#e2ecef);display:grid;place-items:center;border-right:1px solid var(--line);}
+  @media(max-width:820px){.stage{border-right:none;border-bottom:1px solid var(--line);}}
+  .phone{width:280px;background:#0d1b1e;border-radius:34px;padding:10px;box-shadow:0 18px 40px rgba(13,27,30,.28);}
+  .phone .screen-area{background:var(--brand);border-radius:26px;overflow:hidden;height:520px;position:relative;}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:#0d1b1e;border-radius:0 0 14px 14px;z-index:5;}
+  .app{position:absolute;inset:0;overflow-y:auto;padding:34px 12px 16px;}
+  .card{background:rgba(255,255,255,.96);border-radius:14px;padding:14px;box-shadow:0 6px 16px rgba(0,0,0,.1);}
+  .app h3{font-size:.95rem;text-align:center;color:var(--ink);margin-bottom:12px;font-weight:600;}
+
+  .upl{border:2px dashed #3498db;border-radius:12px;padding:22px 10px;text-align:center;background:rgba(52,152,219,.05);}
+  .upl .ico{font-size:1.6rem;}
+  .upl p{font-size:.72rem;color:#34495e;margin:8px 0 10px;}
+  .btn{background:linear-gradient(45deg,#3498db,#2980b9);color:#fff;border:none;border-radius:20px;padding:8px 18px;font-size:.75rem;}
+  .btn-go{background:linear-gradient(45deg,#27ae60,#2ecc71);width:100%;padding:10px;border-radius:16px;font-size:.8rem;margin-top:12px;}
+  .btn-warn{background:linear-gradient(45deg,#f39c12,#e67e22);}
+  .btn-ghost{background:linear-gradient(45deg,#3498db,#2980b9);}
+  .info{background:rgba(52,152,219,.1);border-left:3px solid #3498db;border-radius:6px;padding:8px 10px;font-size:.66rem;color:#2c3e50;margin-top:12px;line-height:1.6;}
+
+  .crop-card{margin-top:12px;}
+  .crop-top{display:flex;justify-content:space-between;align-items:center;font-size:.7rem;font-weight:600;margin-bottom:8px;gap:6px;}
+  .crop-top .tag{background:#eef4ff;color:var(--ux);border-radius:6px;padding:2px 6px;font-size:.62rem;}
+  .mini-btns{display:flex;gap:4px;}
+  .mini-btns span{background:#3498db;color:#fff;border-radius:5px;padding:2px 7px;font-size:.6rem;}
+  .order{background:#f8f9fa;border-radius:6px;padding:5px;text-align:center;font-size:.62rem;color:#555;margin-bottom:8px;}
+  .order select{font-size:.6rem;padding:1px 4px;border:1px solid #cdd6df;border-radius:4px;}
+  .imgbox{position:relative;background:#dfe7ea;border-radius:6px;height:96px;overflow:hidden;}
+  .imgbox::before{content:"截圖預覽";position:absolute;inset:0;display:grid;place-items:center;color:#93a4ad;font-size:.66rem;}
+  .sel{position:absolute;border:2px solid #e74c3c;background:rgba(231,76,60,.12);inset:12px 16px 14px 14px;border-radius:2px;}
+  .h{position:absolute;width:9px;height:9px;background:#e74c3c;border:2px solid #fff;border-radius:50%;}
+  .h.tl{top:-5px;left:-5px}.h.tr{top:-5px;right:-5px}.h.bl{bottom:-5px;left:-5px}.h.br{bottom:-5px;right:-5px}
+  .h.tm{top:-5px;left:50%;transform:translateX(-50%)}.h.bm{bottom:-5px;left:50%;transform:translateX(-50%)}
+  .h.lm{left:-5px;top:50%;transform:translateY(-50%)}.h.rm{right:-5px;top:50%;transform:translateY(-50%)}
+  .cinfo{font-size:.58rem;color:#6c757d;text-align:center;background:#f8f9fa;border-radius:5px;padding:4px;margin-top:6px;}
+
+  .result-canvas{background:#fff;border:1px solid #e3e8ee;border-radius:8px;padding:6px;}
+  .result-canvas .row{height:34px;background:#eef3f5;border-radius:4px;margin-bottom:4px;display:grid;place-items:center;font-size:.6rem;color:#93a4ad;}
+  .result-btns{display:flex;gap:8px;margin-top:12px;}
+  .result-btns .btn{flex:1;text-align:center;}
+
+  .spinner{width:34px;height:34px;border:4px solid #d5eef0;border-top-color:var(--brand-deep);border-radius:50%;margin:30px auto 12px;animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .prog{height:6px;background:#e3e8ee;border-radius:99px;overflow:hidden;margin-top:8px;}
+  .prog i{display:block;height:100%;width:66%;background:linear-gradient(90deg,var(--brand),var(--brand-deep));}
+
+  .toast{background:#fdeeec;border:1px solid #f5c6c0;color:#a5342a;border-radius:10px;padding:12px;font-size:.7rem;text-align:center;}
+
+  /* annotation column */
+  .notes{padding:24px;}
+  .note-group{margin-bottom:18px;}
+  .note-group:last-child{margin-bottom:0;}
+  .note-label{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;padding:4px 10px;border-radius:8px;margin-bottom:10px;}
+  .note-label.ux{color:var(--ux);background:var(--ux-bg);}
+  .note-label.sec{color:var(--sec);background:var(--sec-bg);}
+  .note-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+  .note-list li{font-size:.86rem;color:#3a4a5a;padding-left:20px;position:relative;}
+  .note-list li::before{content:"";position:absolute;left:4px;top:9px;width:6px;height:6px;border-radius:50%;}
+  .note-list.ux li::before{background:var(--ux);}
+  .note-list.sec li::before{background:var(--sec);}
+  .note-list li b{color:var(--ink);}
+  code{background:#eef1f4;padding:1px 6px;border-radius:5px;font-size:.82em;font-family:ui-monospace,Menlo,monospace;color:#b23;}
+
+  /* global spec blocks */
+  .block{margin-top:44px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:26px;}
+  .block h2{font-size:1.3rem;margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+  .block h2 .dot{width:10px;height:10px;border-radius:50%;background:var(--brand);}
+  .block .sub{color:var(--muted);font-size:.9rem;margin-bottom:20px;}
+  .swatches{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;}
+  .sw{border:1px solid var(--line);border-radius:12px;overflow:hidden;width:132px;}
+  .sw .chip{height:56px;}
+  .sw .meta{padding:8px 10px;font-size:.72rem;}
+  .sw .meta b{display:block;font-size:.8rem;}
+  .sw .meta span{color:var(--muted);font-family:ui-monospace,monospace;}
+
+  table.spec{width:100%;border-collapse:collapse;margin-top:4px;font-size:.86rem;}
+  table.spec th,table.spec td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.spec th{color:var(--muted);font-weight:600;font-size:.78rem;letter-spacing:.03em;}
+  table.spec td b{color:var(--ink);}
+  .pill{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:99px;}
+  .pill.done{background:#e7f7ee;color:#1e874b;}
+  .pill.todo{background:#fff3e0;color:#b8730a;}
+
+  .sec-table td:first-child{white-space:nowrap;font-weight:600;color:var(--ink);}
+  .risk{font-size:.7rem;padding:2px 8px;border-radius:99px;font-weight:600;}
+  .risk.h{background:#fdeeec;color:#c0392b;}
+  .risk.m{background:#fff3e0;color:#b8730a;}
+  .risk.l{background:#eef4ff;color:#2563eb;}
+
+  footer{text-align:center;color:var(--muted);font-size:.82rem;margin-top:46px;line-height:1.8;}
+  .legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+  .legend span{font-size:.8rem;display:inline-flex;align-items:center;gap:6px;color:var(--muted);}
+  .legend i{width:12px;height:12px;border-radius:4px;display:inline-block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <span class="badge">設計規格 · v1.0 · 交接 Claude Code</span>
+    <h1>圖片拼接工具 — 各畫面 Mockup</h1>
+    <p>純前端截圖拼接工具｜每個畫面狀態均附 UI/UX 與資安標註</p>
+    <div class="legend">
+      <span><i style="background:#2563eb"></i>UI/UX 考量</span>
+      <span><i style="background:#c0392b"></i>資安考量</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#s1">① 上傳（空狀態）</a>
+    <a href="#s2">② 裁切編輯</a>
+    <a href="#s3">③ 處理中</a>
+    <a href="#s4">④ 拼接結果</a>
+    <a href="#s5">⑤ 錯誤狀態</a>
+    <a href="#design">設計系統</a>
+    <a href="#security">資安總表</a>
+  </nav>
+
+  <!-- ① 上傳 -->
+  <section class="screen" id="s1">
+    <div class="screen-head"><span class="num">1</span><h2>上傳畫面（空狀態）</h2><span class="en">Empty / Landing State</span></div>
+    <div class="screen-body">
+      <div class="stage">
+        <div class="phone"><div class="screen-area"><div class="notch"></div>
+          <div class="app">
+            <h3>🖼️ 圖片拼接工具</h3>
+            <div class="card">
+              <div class="upl">
+                <div class="ico">📁</div>
+                <p>點擊選擇要拼接的圖片文件</p>
+                <button class="btn">選擇圖片</button>
+              </div>
+              <div class="info">選擇多張截圖後，每張圖片都會顯示裁切框。圖片依檔名排序，畫面順序即拼接順序。</div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <div class="note-group">
+          <span class="note-label ux">UI/UX</span>
+          <ul class="note-list ux">
+            <li><b>零學習成本入口</b>：整塊虛線區都可點擊，觸控目標遠大於一顆按鈕。</li>
+            <li><b>預期管理</b>：說明框先講清楚「排序邏輯」，避免使用者拼完才發現順序不如預期。</li>
+            <li><b>隱私安心感</b>：建議在此明示「圖片不會上傳、全在本機處理」，降低上傳截圖的心理門檻。</li>
+            <li><b>accept 過濾</b>：<code>accept="image/*"</code> 讓手機相簿只跳出圖片，減少誤選。</li>
+          </ul>
+        </div>
+        <div class="note-group">
+          <span class="note-label sec">資安</span>
+          <ul class="note-list sec">
+            <li><b>本機處理原則</b>：無後端、無上傳，從架構上消除「資料外洩」風險，是本工具最大的資安優勢。</li>
+            <li><b>CSP 標頭</b>：建議加 <code>Content-Security-Policy</code> meta，限制 script 來源，防止注入。</li>
+            <li><b>檔案類型雙重驗證</b>：MIME 可被偽造，除 <code>type.startsWith('image/')</code> 外，實際 <code>Image()</code> 解碼失敗會被擋下作為第二道防線。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 裁切 -->
+  <section class="screen" id="s2">
+    <div class="screen-head"><span class="num">2</span><h2>裁切編輯畫面</h2><span class="en">Crop & Reorder State</span></div>
+    <div class="screen-body">
+      <div class="stage">
+        <div class="phone"><div class="screen-area"><div class="notch"></div>
+          <div class="app">
+            <div class="card crop-card">
+              <div class="crop-top"><span>位置 1：1.png</span><div class="mini-btns"><span>全選</span><span>重設</span></div></div>
+              <div class="order">拼接順序：<select><option>第 1 個位置</option></select></div>
+              <div class="imgbox">
+                <div class="sel">
+                  <i class="h tl"></i><i class="h tm"></i><i class="h tr"></i>
+                  <i class="h lm"></i><i class="h rm"></i>
+                  <i class="h bl"></i><i class="h bm"></i><i class="h br"></i>
+                </div>
+              </div>
+              <div class="cinfo">選取區域：0, 0 - 1080 x 720 px</div>
+            </div>
+            <div class="card crop-card">
+              <div class="crop-top"><span>位置 2：2.png</span><div class="mini-btns"><span>全選</span><span>重設</span></div></div>
+              <div class="order">拼接順序：<select><option>第 2 個位置</option></select></div>
+              <div class="imgbox"><div class="sel" style="inset:8px 20px 20px 18px"><i class="h tl"></i><i class="h tr"></i><i class="h bl"></i><i class="h br"></i></div></div>
+              <div class="cinfo">選取區域：40, 30 - 980 x 560 px</div>
+            </div>
+            <button class="btn btn-warn" style="width:100%;margin-top:10px;border-radius:14px;padding:8px;font-size:.72rem;">➕ 新增更多圖片</button>
+            <button class="btn btn-go">開始拼接</button>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <div class="note-group">
+          <span class="note-label ux">UI/UX</span>
+          <ul class="note-list ux">
+            <li><b>所見即所得排序</b>：卡片由上到下的視覺順序＝最終拼接順序，不需要腦內轉換。</li>
+            <li><b>觸控命中率</b>：手機版控制點放大到 <code>20px</code>，符合行動裝置最小 44px 觸控熱區建議。</li>
+            <li><b>即時座標回饋</b>：底部即時顯示實際像素範圍，讓使用者精準對齊。</li>
+            <li><b>狀態保留</b>：換順序或新增圖片時保留既有裁切框（依比例還原），避免辛苦框選被清空。</li>
+            <li><b>可加強</b>：拖曳時可加半透明遮罩暗化「被裁掉的區域」，讓保留範圍更直覺。</li>
+          </ul>
+        </div>
+        <div class="note-group">
+          <span class="note-label sec">資安</span>
+          <ul class="note-list sec">
+            <li><b>檔名 XSS 防護</b>：檔名直接插入 DOM，已用 <code>escapeHtml()</code> 轉義 <code>&lt; &gt; &amp; " '</code>，防止惡意檔名執行腳本。</li>
+            <li><b>記憶體 DoS</b>：多張 4K + 3000px 輸出會撐爆手機記憶體，建議加「張數／總像素上限」與友善提示。</li>
+            <li><b>EXIF 隱私</b>：Canvas 重繪後輸出圖已自動去除 GPS 等 EXIF；可在說明中作為隱私賣點。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ③ 處理中 -->
+  <section class="screen" id="s3">
+    <div class="screen-head"><span class="num">3</span><h2>處理中（拼接進行）</h2><span class="en">Processing State</span></div>
+    <div class="screen-body">
+      <div class="stage">
+        <div class="phone"><div class="screen-area"><div class="notch"></div>
+          <div class="app">
+            <div class="card" style="text-align:center;padding:26px 14px;">
+              <div class="spinner"></div>
+              <h3 style="margin:0">正在拼接圖片…</h3>
+              <p style="font-size:.68rem;color:#6c7a89;margin-top:6px">處理第 2 / 3 張</p>
+              <div class="prog"><i></i></div>
+              <p style="font-size:.6rem;color:#93a4ad;margin-top:10px">全程於本機運算，請勿關閉分頁</p>
+            </div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <div class="note-group">
+          <span class="note-label ux">UI/UX</span>
+          <ul class="note-list ux">
+            <li><b>進度可視化</b>：大圖拼接可能耗時數秒，明確的「第 N/總數」比單純轉圈更安心。</li>
+            <li><b>防呆鎖定</b>：處理期間「開始拼接」按鈕 <code>disabled</code> 並改文字為「拼接中…」，避免連點重複執行。</li>
+            <li><b>可加強</b>：超大圖可考慮 <code>Web Worker</code> + <code>OffscreenCanvas</code>，避免主執行緒卡頓造成畫面凍結。</li>
+          </ul>
+        </div>
+        <div class="note-group">
+          <span class="note-label sec">資安</span>
+          <ul class="note-list sec">
+            <li><b>序列化處理</b>：逐張處理並依索引寫入結果陣列，確保順序正確之餘，也降低同時解碼多張大圖的記憶體尖峰。</li>
+            <li><b>失敗防護</b>：單張解碼失敗應被 <code>onerror</code> 捕捉，避免整個流程卡死或洩漏錯誤堆疊。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ④ 結果 -->
+  <section class="screen" id="s4">
+    <div class="screen-head"><span class="num">4</span><h2>拼接結果畫面</h2><span class="en">Result State</span></div>
+    <div class="screen-body">
+      <div class="stage">
+        <div class="phone"><div class="screen-area"><div class="notch"></div>
+          <div class="app">
+            <div class="card">
+              <h3>拼接結果</h3>
+              <div class="result-canvas">
+                <div class="row">位置 1</div>
+                <div class="row">位置 2</div>
+                <div class="row">位置 3</div>
+              </div>
+              <div class="result-btns">
+                <button class="btn btn-ghost">📥 下載圖片</button>
+                <button class="btn btn-ghost">🔄 繼續合併</button>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <div class="note-group">
+          <span class="note-label ux">UI/UX</span>
+          <ul class="note-list ux">
+            <li><b>順序驗證</b>：結果由上到下 = 位置 1、2、3，與編輯畫面完全一致，符合心理預期。</li>
+            <li><b>自動捲動</b>：完成後自動 <code>scrollIntoView</code> 到結果區，手機上不必手動找。</li>
+            <li><b>下載體驗</b>：目前僅「繼續合併」；若恢復下載，檔名建議帶時間戳（如 <code>stitched_20260716.png</code>）方便辨識。</li>
+            <li><b>可加強</b>：手機可加「儲存到相簿／分享」入口（Web Share API），比長按存圖更順手。</li>
+          </ul>
+        </div>
+        <div class="note-group">
+          <span class="note-label sec">資安</span>
+          <ul class="note-list sec">
+            <li><b>下載記憶體</b>：恢復下載時建議用 <code>canvas.toBlob()</code> + <code>URL.createObjectURL</code>，比 <code>toDataURL</code> 省記憶體，大圖較不易當掉。</li>
+            <li><b>Object URL 回收</b>：下載後 <code>revokeObjectURL()</code> 釋放，避免記憶體累積。</li>
+            <li><b>無殘留</b>：不寫入 <code>localStorage</code>，重整即清空，符合隱私最小化原則。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑤ 錯誤 -->
+  <section class="screen" id="s5">
+    <div class="screen-head"><span class="num">5</span><h2>錯誤 / 邊界狀態</h2><span class="en">Error & Edge States</span></div>
+    <div class="screen-body">
+      <div class="stage">
+        <div class="phone"><div class="screen-area"><div class="notch"></div>
+          <div class="app">
+            <div class="card" style="margin-bottom:12px">
+              <div class="toast">⚠️ 未偵測到有效的圖片檔案<br><span style="font-size:.62rem;color:#a5342a;opacity:.8">請選擇 JPG、PNG 等格式</span></div>
+            </div>
+            <div class="card">
+              <div class="toast" style="background:#fff8e6;border-color:#f3dca0;color:#8a6516">📦 圖片數量或尺寸過大<br><span style="font-size:.62rem;opacity:.85">建議一次不超過 10 張，避免裝置記憶體不足</span></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <div class="note-group">
+          <span class="note-label ux">UI/UX</span>
+          <ul class="note-list ux">
+            <li><b>可行動的錯誤訊息</b>：不只說「錯了」，而是告訴使用者「該怎麼做」（改用哪些格式、減少張數）。</li>
+            <li><b>非阻斷式</b>：建議用畫面內 toast 取代 <code>alert()</code>，行動裝置體驗更順、可自動消失。</li>
+            <li><b>降級處理</b>：部分圖片失敗時，應允許其餘正常拼接，而非全部中斷。</li>
+          </ul>
+        </div>
+        <div class="note-group">
+          <span class="note-label sec">資安</span>
+          <ul class="note-list sec">
+            <li><b>錯誤訊息不外洩</b>：對使用者只顯示友善提示，技術細節（堆疊、路徑）不呈現於畫面。</li>
+            <li><b>資源上限即防護</b>：張數／像素上限同時是 UX 與「阻擋惡意超大檔癱瘓瀏覽器」的資安措施。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 設計系統 -->
+  <section class="block" id="design">
+    <h2><span class="dot"></span>設計系統</h2>
+    <p class="sub">交接時可直接沿用的色彩、字體與元件規格</p>
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#00CED1"></div><div class="meta"><b>主色 Brand</b><span>#00CED1</span></div></div>
+      <div class="sw"><div class="chip" style="background:#0FA3A6"></div><div class="meta"><b>主色深</b><span>#0FA3A6</span></div></div>
+      <div class="sw"><div class="chip" style="background:#3498db"></div><div class="meta"><b>操作藍</b><span>#3498db</span></div></div>
+      <div class="sw"><div class="chip" style="background:#27ae60"></div><div class="meta"><b>成功綠</b><span>#27ae60</span></div></div>
+      <div class="sw"><div class="chip" style="background:#e74c3c"></div><div class="meta"><b>裁切紅</b><span>#e74c3c</span></div></div>
+      <div class="sw"><div class="chip" style="background:#f39c12"></div><div class="meta"><b>次要橙</b><span>#f39c12</span></div></div>
+    </div>
+    <table class="spec">
+      <tr><th>項目</th><th>規格</th></tr>
+      <tr><td><b>字體</b></td><td>Microsoft JhengHei / PingFang TC（繁中優先），系統字體堆疊</td></tr>
+      <tr><td><b>圓角</b></td><td>卡片 14–20px、按鈕 16–25px、控制點圓形</td></tr>
+      <tr><td><b>觸控熱區</b></td><td>桌面控制點 12px，手機放大至 20px（≤768px media query）</td></tr>
+      <tr><td><b>陰影</b></td><td><code>0 6px 20px rgba(0,0,0,.1)</code> 統一卡片層級</td></tr>
+      <tr><td><b>斷點</b></td><td>768px：容器改單欄、控制點放大、佈局垂直堆疊</td></tr>
+    </table>
+  </section>
+
+  <!-- 資安總表 -->
+  <section class="block" id="security">
+    <h2><span class="dot" style="background:#c0392b"></span>資安總表（交接檢查用）</h2>
+    <p class="sub">依風險與實作狀態整理，Claude Code 可逐項確認</p>
+    <table class="spec sec-table">
+      <tr><th>面向</th><th>風險</th><th>對策</th><th>狀態</th></tr>
+      <tr><td>資料外洩</td><td><span class="risk l">低</span></td><td>純前端、無上傳，架構上排除</td><td><span class="pill done">已具備</span></td></tr>
+      <tr><td>檔名 XSS</td><td><span class="risk h">高</span></td><td><code>escapeHtml()</code> 轉義後插入 DOM</td><td><span class="pill done">已修正</span></td></tr>
+      <tr><td>CSP 注入</td><td><span class="risk m">中</span></td><td>加 <code>Content-Security-Policy</code> meta 限制來源</td><td><span class="pill todo">階段2加入</span></td></tr>
+      <tr><td>記憶體 DoS</td><td><span class="risk m">中</span></td><td>張數／總像素上限 + 友善提示</td><td><span class="pill todo">待實作</span></td></tr>
+      <tr><td>檔案類型偽造</td><td><span class="risk l">低</span></td><td>MIME 檢查 + Image() 解碼二次把關</td><td><span class="pill done">已具備</span></td></tr>
+      <tr><td>本機殘留</td><td><span class="risk l">低</span></td><td>不用 localStorage，重整即清空</td><td><span class="pill done">已具備</span></td></tr>
+      <tr><td>傳輸加密</td><td><span class="risk l">低</span></td><td>GitHub Pages 強制 HTTPS</td><td><span class="pill done">部署即得</span></td></tr>
+      <tr><td>EXIF 隱私</td><td><span class="risk l">低</span></td><td>Canvas 重繪自動去除中繼資料</td><td><span class="pill done">已具備</span></td></tr>
+    </table>
+  </section>
+
+  <footer>
+    圖片拼接工具 · Mockup 與設計規格 v1.0<br>
+    本檔可直接附於 repo 作為設計文件，或提供給 Claude Code 作為 UI/UX 與資安實作依據
+  </footer>
+
+</div>
+</body>
+</html>

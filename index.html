@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════
+ HANDOFF — 圖片拼接工具（手動裁切版）｜交接對象：Claude Code
+ 版本：v1.0-final ｜ 日期：2026-07-16 ｜ 狀態：可直接部署
+═══════════════════════════════════════════════════════════════
+
+【專案概述】
+純前端零後端圖片拼接工具。上傳多張截圖→逐張框選裁切→調整順序→
+垂直拼接成長圖。手機觸控為第一優先。所有處理在瀏覽器端完成
+（FileReader + Canvas），圖片不上傳。單一 HTML、無相依、無建置。
+
+【已修正的 bug — 請勿讓其回歸】
+1. selectFiles is not defined → 函式定義順序已修正
+2. 手機無法拖拽紅框 → touchstart + 全域 touchmove/touchend、
+   touch-action:none、{passive:false}
+3. 拼接順序錯亂 → 並行 FileReader + push() 完成順序不定；
+   已改為序列化處理 + 依索引寫入（processImages 內有註記）
+4. 預設排序錯誤 → localeCompare numeric:true 自然排序 + flex column
+5. 換順序/新增圖片後裁切設定遺失 → setupCropInterface(preserve)
+   保留 cropData，initializeCrop 依比例還原先前裁切框
+6. 視窗 resize 後裁切座標錯位 → resize 監聽 + 200ms debounce 重算
+7. 檔名含 HTML 特殊字元破版 → escapeHtml
+8. 拼接按鈕連點重複執行 → isProcessing 鎖定
+
+【已知限制（留給後續階段）】
+- 未做圖片數量/總像素上限保護（多張 4K + 3000px 輸出記憶體壓力大）
+- 無 EXIF 方向處理（iPhone 直拍可能旋轉；可用 createImageBitmap
+  的 imageOrientation:'from-image' 改寫 cropAndLoadImage）
+- 「下載 PNG」已依使用者需求移除，僅保留繼續合併；若日後恢復
+  請用 canvas.toBlob 而非 toDataURL（記憶體較省）
+- Claude.ai artifact 沙箱的 SecurityError/cookie 訊息是環境噪音
+
+【後續路線圖（依序實施）】
+階段 1：本地單檔 HTML（本檔即是，已完成）
+階段 2：GitHub Pages（repo: image-stitcher，本檔為 index.html + README.md）
+階段 3：PWA（追加 manifest.json、sw.js、beforeinstallprompt 安裝提示、
+        離線快取；GitHub Pages 已是 HTTPS 可直接支援）
+階段 4：Tauri 桌面打包（使用者偏好 Tauri 而非 Electron）
+
+【使用者偏好】
+繁體中文介面與註解（台灣用語）／單檔極簡架構／
+Playwright 測試（真實 Chromium）／靜態託管優先
+
+【建議 repo 結構】
+image-stitcher/
+├── index.html
+├── README.md
+├── manifest.json（階段 3）
+├── sw.js（階段 3）
+└── tests/stitch.spec.ts（Playwright）
+═══════════════════════════════════════════════════════════════
+-->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖片拼接工具 - 手動裁切版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, "Microsoft JhengHei", sans-serif; background: #00CED1; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 2.2em; font-weight: 300; }
+        .upload-area { border: 3px solid #3498db; border-radius: 15px; padding: 40px; text-align: center; margin-bottom: 30px; background: rgba(52,152,219,0.05); cursor: pointer; transition: all 0.3s ease; }
+        .upload-area:hover { border-color: #2980b9; background: rgba(52,152,219,0.1); }
+        .upload-text { color: #34495e; font-size: 1.2em; margin-bottom: 15px; }
+        .upload-btn { background: linear-gradient(45deg,#3498db,#2980b9); color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 1.1em; }
+        .file-input { display: none; }
+        .crop-area { margin: 30px 0; display: none; }
+        .crop-title { color: #2c3e50; font-size: 1.5em; margin-bottom: 20px; font-weight: 500; }
+        .add-more-section { text-align: center; margin-bottom: 20px; }
+        .add-more-btn { background: #f39c12; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1em; }
+        .add-more-btn:hover { background: #e67e22; }
+        /* 垂直排列：畫面順序 = 拼接順序（上到下） */
+        .image-crop-container { display: flex; flex-direction: column; gap: 30px; margin-bottom: 30px; }
+        .crop-item { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); border: 2px solid #ecf0f1; }
+        .crop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 8px; }
+        .crop-name { font-weight: 600; color: #2c3e50; font-size: 1.1em; word-break: break-all; }
+        .crop-controls { display: flex; gap: 5px; }
+        .crop-btn { background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9em; }
+        .crop-btn:hover { background: #2980b9; }
+        .position-control { text-align: center; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
+        .position-control label { color: #2c3e50; margin-right: 8px; font-weight: 500; }
+        .position-control select { padding: 4px 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1em; }
+        .position-control small { color: #666; margin-left: 10px; }
+        .image-preview { position: relative; display: inline-block; border: 2px solid #bdc3c7; border-radius: 8px; overflow: hidden; background: #f8f9fa; width: 100%; }
+        .preview-img { max-width: 100%; max-height: 400px; display: block; width: 100%; }
+        .crop-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        /* touch-action:none 是手機拖拽的關鍵，勿移除 */
+        .crop-selection { position: absolute; border: 3px solid #e74c3c; background: rgba(231,76,60,0.1); pointer-events: all; cursor: move; min-width: 20px; min-height: 20px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        .crop-handle { position: absolute; width: 12px; height: 12px; background: #e74c3c; border: 2px solid white; border-radius: 50%; cursor: pointer; touch-action: none; }
+        .crop-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .crop-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .crop-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .crop-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+        .crop-handle.n { top: -6px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+        .crop-handle.s { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+        .crop-handle.w { top: 50%; left: -6px; transform: translateY(-50%); cursor: w-resize; }
+        .crop-handle.e { top: 50%; right: -6px; transform: translateY(-50%); cursor: e-resize; }
+        .crop-info { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.9em; color: #6c757d; text-align: center; }
+        .process-section { text-align: center; margin: 30px 0; display: none; }
+        .output-controls { margin-bottom: 20px; }
+        .output-controls label { color: #2c3e50; font-weight: 500; margin-right: 15px; }
+        .output-controls select { padding: 8px 12px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 1em; }
+        .process-btn { background: linear-gradient(45deg,#27ae60,#2ecc71); color: white; border: none; padding: 15px 40px; border-radius: 25px; cursor: pointer; font-size: 1.2em; font-weight: 500; box-shadow: 0 4px 15px rgba(39,174,96,0.3); }
+        .process-btn:disabled { opacity: 0.6; cursor: wait; }
+        .result-area { margin-top: 30px; display: none; text-align: center; }
+        .result-canvas { max-width: 100%; border: 2px solid #ecf0f1; border-radius: 10px; margin: 20px 0; }
+        .download-btns { margin-top: 20px; }
+        .download-btn { background: linear-gradient(45deg,#3498db,#2980b9); color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-size: 1em; margin: 0 10px; }
+        .info-box { background: rgba(52,152,219,0.1); border-left: 4px solid #3498db; padding: 15px; border-radius: 5px; margin: 20px 0; color: #2c3e50; }
+        /* 手機：加大控制點方便觸控 */
+        @media (max-width: 768px) {
+            .crop-handle { width: 20px; height: 20px; border: 4px solid white; }
+            .crop-handle.nw { top: -10px; left: -10px; }
+            .crop-handle.ne { top: -10px; right: -10px; }
+            .crop-handle.sw { bottom: -10px; left: -10px; }
+            .crop-handle.se { bottom: -10px; right: -10px; }
+            .crop-handle.n { top: -10px; }
+            .crop-handle.s { bottom: -10px; }
+            .crop-handle.w { left: -10px; }
+            .crop-handle.e { right: -10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ 圖片拼接工具 - 手動裁切版</h1>
+        <div class="upload-area" onclick="selectFiles()">
+            <div class="upload-text">點擊選擇要拼接的圖片文件</div>
+            <button class="upload-btn">選擇圖片</button>
+            <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
+        </div>
+        <div class="info-box">
+            <strong>使用說明：</strong><br>
+            • 選擇多張截圖後，每張圖片都會顯示裁切框<br>
+            • 拖拽紅色裁切框來選擇要保留的區域<br>
+            • 圖片依檔名排序，畫面上的順序就是拼接順序（第 1 個在最上方）<br>
+            • 可用「拼接順序」下拉選單調整位置，也可隨時新增更多圖片<br>
+            • 設定完所有圖片後點擊拼接按鈕
+        </div>
+        <div class="crop-area" id="cropArea">
+            <div class="crop-title">設定每張圖片的裁切範圍：</div>
+            <div class="add-more-section">
+                <button class="add-more-btn" onclick="addMoreImages()">➕ 新增更多圖片</button>
+                <input type="file" id="additionalFileInput" class="file-input" multiple accept="image/*">
+            </div>
+            <div class="image-crop-container" id="cropContainer"></div>
+            <div class="process-section" id="processSection">
+                <div class="output-controls">
+                    <label>輸出設定：</label>
+                    <select id="outputMode">
+                        <option value="original">原始大小</option>
+                        <option value="2x">2倍品質</option>
+                        <option value="3x">3倍品質</option>
+                        <option value="3000px" selected>固定寬度 3000px</option>
+                    </select>
+                </div>
+                <button class="process-btn" id="processBtn" onclick="processImages()">開始拼接</button>
+            </div>
+        </div>
+        <div class="result-area" id="resultArea">
+            <h3>拼接結果：</h3>
+            <canvas id="resultCanvas" class="result-canvas"></canvas>
+            <div class="download-btns">
+                <button class="download-btn" onclick="continueStitching()">🔄 繼續合併</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+var selectedFiles = [];
+var cropData = [];
+var currentDragging = null;
+var isProcessing = false;
+
+// 防止檔名含 HTML 特殊字元破壞版面
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+function selectFiles() {
+    var fileInput = document.getElementById('fileInput');
+    if (fileInput) fileInput.click();
+}
+
+// 自然排序，確保 1, 2, ..., 10 順序正確
+function handleFiles(fileList) {
+    selectedFiles = [];
+    cropData = [];
+    for (var i = 0; i < fileList.length; i++) {
+        if (fileList[i].type.startsWith('image/')) selectedFiles.push(fileList[i]);
+    }
+    selectedFiles.sort(function(a, b) {
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    if (selectedFiles.length > 0) {
+        setupCropInterface(false);
+    } else {
+        alert('請選擇有效的圖片檔案（JPG、PNG 等）');
+    }
+}
+
+// preserve=true 時保留既有裁切設定（換順序、新增圖片用）
+function setupCropInterface(preserve) {
+    var cropArea = document.getElementById('cropArea');
+    var cropContainer = document.getElementById('cropContainer');
+    var processSection = document.getElementById('processSection');
+    if (!cropArea || !cropContainer || !processSection) return;
+    cropArea.style.display = 'block';
+    processSection.style.display = 'block';
+    cropContainer.innerHTML = '';
+    if (!preserve) {
+        cropData = new Array(selectedFiles.length);
+    } else {
+        cropData.length = selectedFiles.length;
+    }
+    for (var i = 0; i < selectedFiles.length; i++) {
+        loadImageForCrop(selectedFiles[i], i);
+    }
+}
+
+function loadImageForCrop(file, index) {
+    var reader = new FileReader();
+    reader.onload = function(e) { createCropItem(e.target.result, file.name, index); };
+    reader.readAsDataURL(file);
+}
+
+function createCropItem(imageSrc, fileName, index) {
+    var cropContainer = document.getElementById('cropContainer');
+    var safeName = escapeHtml(fileName);
+    var positionOptions = '';
+    for (var i = 0; i < selectedFiles.length; i++) {
+        var selected = i === index ? ' selected' : '';
+        positionOptions += '<option value="' + i + '"' + selected + '>第 ' + (i + 1) + ' 個位置</option>';
+    }
+    var cropItem = document.createElement('div');
+    cropItem.className = 'crop-item';
+    cropItem.innerHTML =
+        '<div class="crop-header">' +
+            '<div class="crop-name">位置 ' + (index + 1) + ': ' + safeName + '</div>' +
+            '<div class="crop-controls">' +
+                '<button class="crop-btn" onclick="selectAllCrop(' + index + ')">全選</button>' +
+                '<button class="crop-btn" onclick="resetCropArea(' + index + ')">重設</button>' +
+            '</div>' +
+        '</div>' +
+        '<div class="position-control">' +
+            '<label>拼接順序：</label>' +
+            '<select onchange="changeImagePosition(' + index + ', this.value)">' + positionOptions + '</select>' +
+            '<small>第1個會在最上方</small>' +
+        '</div>' +
+        '<div class="image-preview" id="preview-' + index + '">' +
+            '<img src="' + imageSrc + '" class="preview-img" id="img-' + index + '">' +
+            '<div class="crop-overlay" id="overlay-' + index + '">' +
+                '<div class="crop-selection" id="selection-' + index + '">' +
+                    '<div class="crop-handle nw" data-handle="nw"></div>' +
+                    '<div class="crop-handle n" data-handle="n"></div>' +
+                    '<div class="crop-handle ne" data-handle="ne"></div>' +
+                    '<div class="crop-handle w" data-handle="w"></div>' +
+                    '<div class="crop-handle e" data-handle="e"></div>' +
+                    '<div class="crop-handle sw" data-handle="sw"></div>' +
+                    '<div class="crop-handle s" data-handle="s"></div>' +
+                    '<div class="crop-handle se" data-handle="se"></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="crop-info" id="info-' + index + '">選取區域：等待圖片載入...</div>';
+    cropContainer.appendChild(cropItem);
+    var img = document.getElementById('img-' + index);
+    if (img) {
+        img.onload = function() { initializeCrop(index); };
+        if (img.complete) initializeCrop(index);
+    }
+}
+
+// 若 cropData[index] 已有同一張圖的舊裁切設定，依比例還原；否則預設全選
+function initializeCrop(index) {
+    var img = document.getElementById('img-' + index);
+    if (!img) return;
+    setTimeout(function() {
+        var imgRect = img.getBoundingClientRect();
+        if (imgRect.width === 0) return;
+        var old = cropData[index];
+        var cropRect;
+        if (old && old.cropRect &&
+            old.originalWidth === img.naturalWidth &&
+            old.originalHeight === img.naturalHeight) {
+            var rx = imgRect.width / old.displayWidth;
+            var ry = imgRect.height / old.displayHeight;
+            cropRect = {
+                x: old.cropRect.x * rx,
+                y: old.cropRect.y * ry,
+                width: old.cropRect.width * rx,
+                height: old.cropRect.height * ry
+            };
+        } else {
+            cropRect = { x: 0, y: 0, width: imgRect.width, height: imgRect.height };
+        }
+        cropData[index] = {
+            originalWidth: img.naturalWidth,
+            originalHeight: img.naturalHeight,
+            displayWidth: imgRect.width,
+            displayHeight: imgRect.height,
+            cropRect: cropRect
+        };
+        updateSelectionDisplay(index, cropRect);
+        setupCropHandlers(index);
+        updateCropInfo(index);
+    }, 100);
+}
+
+function updateSelectionDisplay(index, rect) {
+    var selection = document.getElementById('selection-' + index);
+    if (selection) {
+        selection.style.left = rect.x + 'px';
+        selection.style.top = rect.y + 'px';
+        selection.style.width = rect.width + 'px';
+        selection.style.height = rect.height + 'px';
+    }
+}
+
+// 滑鼠 + 觸控雙軌事件綁定
+function setupCropHandlers(index) {
+    var selection = document.getElementById('selection-' + index);
+    if (!selection) return;
+    var handles = selection.querySelectorAll('.crop-handle');
+
+    selection.addEventListener('mousedown', function(e) {
+        if (e.target.classList.contains('crop-handle')) return;
+        startDrag(index, 'move', e);
+    });
+    selection.addEventListener('touchstart', function(e) {
+        if (e.target.classList.contains('crop-handle')) return;
+        e.preventDefault();
+        var t = e.touches[0];
+        startDrag(index, 'move', { clientX: t.clientX, clientY: t.clientY });
+    }, { passive: false });
+
+    handles.forEach(function(handle) {
+        handle.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+            startDrag(index, handle.dataset.handle, e);
+        });
+        handle.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            var t = e.touches[0];
+            startDrag(index, handle.dataset.handle, { clientX: t.clientX, clientY: t.clientY });
+        }, { passive: false });
+    });
+}
+
+function startDrag(index, type, e) {
+    if (e.preventDefault) e.preventDefault();
+    if (!cropData[index]) return;
+    currentDragging = {
+        index: index, type: type, startX: e.clientX, startY: e.clientY,
+        startRect: Object.assign({}, cropData[index].cropRect)
+    };
+    document.addEventListener('mousemove', handleDrag);
+    document.addEventListener('mouseup', endDrag);
+}
+
+function handleDrag(e) {
+    if (!currentDragging || !cropData[currentDragging.index]) return;
+    var dx = e.clientX - currentDragging.startX;
+    var dy = e.clientY - currentDragging.startY;
+    var index = currentDragging.index;
+    var data = cropData[index];
+    var newRect = Object.assign({}, currentDragging.startRect);
+    var maxWidth = data.displayWidth;
+    var maxHeight = data.displayHeight;
+    switch (currentDragging.type) {
+        case 'move':
+            newRect.x = Math.max(0, Math.min(maxWidth - newRect.width, newRect.x + dx));
+            newRect.y = Math.max(0, Math.min(maxHeight - newRect.height, newRect.y + dy));
+            break;
+        case 'se':
+            newRect.width = Math.max(20, Math.min(maxWidth - newRect.x, newRect.width + dx));
+            newRect.height = Math.max(20, Math.min(maxHeight - newRect.y, newRect.height + dy));
+            break;
+        case 'nw':
+            newRect.x = Math.max(0, Math.min(newRect.x + newRect.width - 20, newRect.x + dx));
+            newRect.y = Math.max(0, Math.min(newRect.y + newRect.height - 20, newRect.y + dy));
+            newRect.width = Math.max(20, newRect.width - dx);
+            newRect.height = Math.max(20, newRect.height - dy);
+            break;
+        case 'ne':
+            newRect.y = Math.max(0, Math.min(newRect.y + newRect.height - 20, newRect.y + dy));
+            newRect.width = Math.max(20, Math.min(maxWidth - newRect.x, newRect.width + dx));
+            newRect.height = Math.max(20, newRect.height - dy);
+            break;
+        case 'sw':
+            newRect.x = Math.max(0, Math.min(newRect.x + newRect.width - 20, newRect.x + dx));
+            newRect.width = Math.max(20, newRect.width - dx);
+            newRect.height = Math.max(20, Math.min(maxHeight - newRect.y, newRect.height + dy));
+            break;
+        case 'n':
+            newRect.y = Math.max(0, Math.min(newRect.y + newRect.height - 20, newRect.y + dy));
+            newRect.height = Math.max(20, newRect.height - dy);
+            break;
+        case 's':
+            newRect.height = Math.max(20, Math.min(maxHeight - newRect.y, newRect.height + dy));
+            break;
+        case 'w':
+            newRect.x = Math.max(0, Math.min(newRect.x + newRect.width - 20, newRect.x + dx));
+            newRect.width = Math.max(20, newRect.width - dx);
+            break;
+        case 'e':
+            newRect.width = Math.max(20, Math.min(maxWidth - newRect.x, newRect.width + dx));
+            break;
+    }
+    data.cropRect = newRect;
+    updateSelectionDisplay(index, newRect);
+    updateCropInfo(index);
+}
+
+function endDrag() {
+    currentDragging = null;
+    document.removeEventListener('mousemove', handleDrag);
+    document.removeEventListener('mouseup', endDrag);
+}
+
+function updateCropInfo(index) {
+    var data = cropData[index];
+    if (!data) return;
+    var rect = data.cropRect;
+    var scaleX = data.originalWidth / data.displayWidth;
+    var scaleY = data.originalHeight / data.displayHeight;
+    var info = document.getElementById('info-' + index);
+    if (info) {
+        info.textContent = '選取區域：' + Math.round(rect.x * scaleX) + ', ' + Math.round(rect.y * scaleY) +
+            ' - ' + Math.round(rect.width * scaleX) + ' x ' + Math.round(rect.height * scaleY) + ' px';
+    }
+}
+
+function addMoreImages() {
+    var input = document.getElementById('additionalFileInput');
+    if (input) input.click();
+}
+
+// 追加圖片時保留既有裁切設定
+function addFilesToExisting(fileList) {
+    var newFiles = [];
+    for (var i = 0; i < fileList.length; i++) {
+        if (fileList[i].type.startsWith('image/')) newFiles.push(fileList[i]);
+    }
+    if (newFiles.length > 0) {
+        selectedFiles = selectedFiles.concat(newFiles);
+        setupCropInterface(true);
+    }
+}
+
+// 換位後介面重建，畫面順序永遠 = 拼接順序；裁切設定跟著檔案走
+function changeImagePosition(fromIndex, toIndex) {
+    toIndex = parseInt(toIndex);
+    if (fromIndex === toIndex) return;
+    var movedFile = selectedFiles[fromIndex];
+    var movedCropData = cropData[fromIndex];
+    selectedFiles.splice(fromIndex, 1);
+    cropData.splice(fromIndex, 1);
+    selectedFiles.splice(toIndex, 0, movedFile);
+    cropData.splice(toIndex, 0, movedCropData || null);
+    setupCropInterface(true);
+}
+
+function selectAllCrop(index) {
+    var data = cropData[index];
+    if (!data) return;
+    var cropRect = { x: 0, y: 0, width: data.displayWidth, height: data.displayHeight };
+    data.cropRect = cropRect;
+    updateSelectionDisplay(index, cropRect);
+    updateCropInfo(index);
+}
+
+function resetCropArea(index) { selectAllCrop(index); }
+
+// 序列化處理：依索引順序逐張處理，確保拼接順序絕對正確（勿改回並行+push）
+function processImages() {
+    if (isProcessing) return;
+    isProcessing = true;
+    var btn = document.getElementById('processBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '拼接中...'; }
+
+    var processedImages = [];
+    function processImageAtIndex(index) {
+        if (index >= selectedFiles.length) {
+            stitchCroppedImages(processedImages);
+            isProcessing = false;
+            if (btn) { btn.disabled = false; btn.textContent = '開始拼接'; }
+            return;
+        }
+        cropAndLoadImage(index, function(croppedCanvas) {
+            processedImages[index] = croppedCanvas;
+            processImageAtIndex(index + 1);
+        });
+    }
+    processImageAtIndex(0);
+}
+
+function cropAndLoadImage(index, callback) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var data = cropData[index];
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            if (!data) {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                callback(canvas);
+                return;
+            }
+            var rect = data.cropRect;
+            var scaleX = data.originalWidth / data.displayWidth;
+            var scaleY = data.originalHeight / data.displayHeight;
+            var cropX = Math.round(rect.x * scaleX);
+            var cropY = Math.round(rect.y * scaleY);
+            var cropWidth = Math.max(1, Math.round(rect.width * scaleX));
+            var cropHeight = Math.max(1, Math.round(rect.height * scaleY));
+            canvas.width = cropWidth;
+            canvas.height = cropHeight;
+            ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+            callback(canvas);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(selectedFiles[index]);
+}
+
+// 由上到下依序拼接：索引 0 在最上方
+function stitchCroppedImages(canvases) {
+    var outputMode = document.getElementById('outputMode').value;
+    var maxWidth = 0, totalHeight = 0, scaleFactor = 1;
+    for (var i = 0; i < canvases.length; i++) {
+        if (canvases[i]) {
+            maxWidth = Math.max(maxWidth, canvases[i].width);
+            totalHeight += canvases[i].height;
+        }
+    }
+    if (maxWidth === 0) return;
+    switch (outputMode) {
+        case '2x': scaleFactor = 2; break;
+        case '3x': scaleFactor = 3; break;
+        case '3000px': scaleFactor = 3000 / maxWidth; break;
+        default: scaleFactor = 1; break;
+    }
+    var finalWidth = Math.round(maxWidth * scaleFactor);
+    var finalHeight = Math.round(totalHeight * scaleFactor);
+    var resultCanvas = document.getElementById('resultCanvas');
+    var ctx = resultCanvas.getContext('2d');
+    resultCanvas.width = finalWidth;
+    resultCanvas.height = finalHeight;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, finalWidth, finalHeight);
+    var currentY = 0;
+    for (var j = 0; j < canvases.length; j++) {
+        var canvas = canvases[j];
+        if (canvas) {
+            var scaledHeight = Math.round(canvas.height * scaleFactor);
+            var scaledWidth = Math.round(canvas.width * scaleFactor);
+            var x = Math.round((finalWidth - scaledWidth) / 2);
+            ctx.drawImage(canvas, x, currentY, scaledWidth, scaledHeight);
+            currentY += scaledHeight;
+        }
+    }
+    document.getElementById('resultArea').style.display = 'block';
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth' });
+}
+
+function continueStitching() {
+    selectedFiles = [];
+    cropData = [];
+    document.getElementById('resultArea').style.display = 'none';
+    document.getElementById('cropArea').style.display = 'none';
+    document.getElementById('cropContainer').innerHTML = '';
+    document.querySelector('.upload-area').scrollIntoView({ behavior: 'smooth' });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) handleFiles(e.target.files);
+            e.target.value = ''; // 允許重複選同一批檔案
+        });
+    }
+    var additionalFileInput = document.getElementById('additionalFileInput');
+    if (additionalFileInput) {
+        additionalFileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) addFilesToExisting(e.target.files);
+            e.target.value = '';
+        });
+    }
+    // 手機：拖拽中禁止頁面滾動，並將觸控轉發給拖拽處理器
+    document.addEventListener('touchmove', function(e) {
+        if (currentDragging) {
+            e.preventDefault();
+            var t = e.touches[0];
+            handleDrag({ clientX: t.clientX, clientY: t.clientY });
+        }
+    }, { passive: false });
+    document.addEventListener('touchend', function() {
+        if (currentDragging) endDrag();
+    });
+    // 視窗尺寸改變（含手機轉向）：依比例重算所有裁切框，避免座標錯位
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            for (var i = 0; i < selectedFiles.length; i++) {
+                var img = document.getElementById('img-' + i);
+                var d = cropData[i];
+                if (!img || !d) continue;
+                var r = img.getBoundingClientRect();
+                if (r.width === 0) continue;
+                var rx = r.width / d.displayWidth;
+                var ry = r.height / d.displayHeight;
+                d.cropRect = {
+                    x: d.cropRect.x * rx, y: d.cropRect.y * ry,
+                    width: d.cropRect.width * rx, height: d.cropRect.height * ry
+                };
+                d.displayWidth = r.width;
+                d.displayHeight = r.height;
+                updateSelectionDisplay(i, d.cropRect);
+                updateCropInfo(i);
+            }
+        }, 200);
+    });
+});
+</script>
+</body>
+</html>

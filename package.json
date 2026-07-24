@@ -1,0 +1,21 @@
+{
+  "name": "image-stitcher",
+  "version": "1.0.0",
+  "description": "純前端、零後端的截圖拼接工具。上傳多張截圖，逐張框選要保留的區域、調整順序後，垂直拼接成一張長圖。手機觸控為第一優先。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "typescript": "^7.0.2"
+  }
+}

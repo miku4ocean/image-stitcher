@@ -1,8 +1,17 @@
 # HANDOFF — image-stitcher
-更新：2026-07-24／claude code
+更新：2026-07-26／claude code
 
 ## 目前目標
-核心功能＋兩項資安補強＋Playwright 驗證均已完成，準備階段 2（GitHub Pages）上線（等使用者確認後才動作）。
+階段 2（GitHub Pages）已上線。下一步：等使用者確認後再議階段 3（PWA）。
+
+## 階段 2 部署紀錄（2026-07-26）
+- 密鑰掃描：全歷史（`git rev-list --all` 逐 commit `git grep`）＋工作區（含未追蹤檔案）掃描
+  api key／secret／token／password／AKIA／sk-／ghp_／Bearer／私鑰 PEM 等 pattern，**全部零命中**。
+- repo 可見性：public（`gh repo view` 已驗證 `visibility: PUBLIC`）。
+- GitHub Pages：`main` 分支根目錄 `/`，已建站並驗證。
+  網址：https://miku4ocean.github.io/image-stitcher/
+  驗證：`curl -sI` 回 `HTTP/2 200`，頁面 `<title>圖片拼接工具 - 手動裁切版</title>`，
+  `content-length: 35282` 與 `index.html` 檔案大小一致。
 
 ## 狀態
 - 已完成：核心功能（上傳／裁切／換序／垂直拼接），8 個已修 bug 全數保留未回歸（見 index.html 開頭註解）
@@ -34,11 +43,12 @@
 - 10 條測試（①~⑦ + 2 條原始基礎測試 + 1 條張數上限資安測試），`--repeat-each=5` 共 50 次執行全綠
 
 ## 下一步（接手的人從這裡開始）
-1. 階段 2 GitHub Pages 部署 —— **先不要做，等主對話與使用者確認**
-2. 部署後才考慮階段 3（PWA）、階段 4（Tauri）
+1. 階段 2 GitHub Pages 部署已完成（見上方部署紀錄），網址 https://miku4ocean.github.io/image-stitcher/
+2. **等使用者確認後**才議階段 3（PWA）、階段 4（Tauri）
 
 ## 地雷（別踩）
 - 8 個已修 bug 絕不可回歸；維持單一 HTML／零相依／零建置
+- repo 現為 public，往後每次 commit 前留意勿引入密鑰／敏感資訊
 - 階段 3（PWA）、階段 4（Tauri）等使用者確認階段 2 上線後才做
 - 介面與註解一律繁體中文（台灣用語）
 - `tests/fixtures/*.png` 是可重現產物（`node tests/fixtures/generate.js`），不必手動維護

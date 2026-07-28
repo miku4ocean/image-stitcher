@@ -128,6 +128,10 @@ image-stitcher/
             .crop-handle.e { right: -10px; }
         }
     </style>
+    <!-- PWA（階段 3）：manifest、主題色、iOS 加入主畫面圖示 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00CED1">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
     <div class="container">
@@ -716,6 +720,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 200);
     });
 });
+</script>
+
+<script>
+// PWA（階段 3）：註冊 service worker，讓工具離線也能開啟。
+// 只在瀏覽器支援且是 http(s) 協定時才註冊（file:// 開啟本檔案時 SW 無法運作，靜默跳過即可）。
+if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.protocol === 'https:')) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').then(function (reg) {
+            console.log('[SW] 註冊成功，scope：', reg.scope);
+        }).catch(function (err) {
+            console.warn('[SW] 註冊失敗：', err);
+        });
+    });
+}
 </script>
 </body>
 </html>

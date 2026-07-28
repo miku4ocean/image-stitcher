@@ -1,0 +1,48 @@
+%% image-stitcher — 系統架構（Mermaid flowchart）
+%% 來源：實讀 index.html（含 HANDOFF 註解）、HANDOFF.md、AGENTS.md、README.md、docs/mockup.html、tests/stitch.spec.ts
+%% 本工具無後端、無資料庫、無第三方 API；純前端單一 HTML 檔
+flowchart TB
+
+    subgraph L1["① 使用者 / 瀏覽器"]
+        U["手機觸控 / 桌面滑鼠<br/>開啟 index.html（file:// 直開或靜態託管皆可）"]
+    end
+
+    subgraph L2["② UI 狀態層（單一 DOM，無路由 / 無 SPA framework）"]
+        S1["上傳區　.upload-area"]
+        S2["裁切編輯區　.crop-area<br/>（crop-item 卡片 × N，拼接順序下拉選單）"]
+        S3["結果區　.result-area<br/>（resultCanvas，繼續合併按鈕）"]
+        T["提示 Toast　#limitToast<br/>（黃＝上限提示／紅＝檔案無效，取代 alert）"]
+    end
+
+    subgraph L3["③ 前端邏輯層 ＋ 資安防護（keystone）"]
+        LOGIC["狀態陣列 selectedFiles[] / cropData[]<br/>自然排序 localeCompare(numeric)<br/>序列化拼接 processImages()（依索引逐張處理）"]
+        SEC["escapeHtml() 檔名 XSS 防護<br/>checkAndAddFiles()：MAX_FILES=10／MAX_SINGLE_PIXELS=16,000,000／MAX_TOTAL_PIXELS=80,000,000<br/>CSP meta：default-src 'self'; connect-src 'none'; base-uri 'none'"]
+    end
+
+    subgraph L4["④ 瀏覽器原生 API"]
+        API["FileReader（readAsDataURL）<br/>Canvas 2D Context（裁切繪製／垂直拼接）<br/>createImageBitmap（像素檢查）<br/>Touch / Mouse Events（8 向控制點拖曳）"]
+    end
+
+    subgraph L5["⑤ 外部依賴"]
+        NONE["無：無後端伺服器、無資料庫、無第三方 API、無 CDN、無分析追蹤<br/>（GitHub Pages 僅為階段 2 的靜態託管規劃，非執行期依賴）"]
+    end
+
+    U --> S1
+    S1 -->|"選擇圖片 / 拖曳新增"| S2
+    S2 -->|"點擊「開始拼接」"| S3
+    S3 -->|"繼續合併"| S1
+    S1 -.->|"檔案無效"| T
+    S2 -.->|"超過張數/像素上限"| T
+
+    S1 --> LOGIC
+    S2 --> LOGIC
+    LOGIC --> SEC
+    LOGIC --> API
+    API --> S2
+    API --> S3
+    SEC -.->|"connect-src 'none' 阻斷一切對外連線"| NONE
+
+    classDef keystone fill:#EAEEF7,stroke:#2E4B8F,stroke-width:2px,color:#181B20
+    classDef none fill:#FBFAF7,stroke:#B03A2E,stroke-width:1px,stroke-dasharray:4 3,color:#6B7178
+    class LOGIC,SEC keystone
+    class NONE none

@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 1400" font-family="ui-sans-serif,system-ui,'Segoe UI',Roboto,'Noto Sans TC',sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2E4B8F"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="1400" fill="#FBFAF7"/>
+
+  <!-- header -->
+  <text x="40" y="52" font-family="Georgia,'Iowan Old Style','Times New Roman',serif" font-size="26" fill="#181B20">image-stitcher<tspan fill="#2E4B8F">.</tspan></text>
+  <text x="940" y="46" text-anchor="end" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="11" letter-spacing="1" fill="#6B7178">ARCHITECTURE · v1.0</text>
+  <text x="940" y="60" text-anchor="end" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="11" letter-spacing="1" fill="#6B7178">2026-07-24</text>
+  <line x1="40" y1="72" x2="940" y2="72" stroke="#E7E3DA" stroke-width="1"/>
+
+  <text x="40" y="106" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="11" letter-spacing="2" fill="#6B7178">SYSTEM ARCHITECTURE</text>
+  <text x="40" y="140" font-family="Georgia,'Iowan Old Style','Times New Roman',serif" font-size="26" fill="#181B20">系統架構圖 — 五層 · 純前端零後端</text>
+  <text x="40" y="164" font-family="inherit" font-size="13" fill="#6B7178">上傳截圖 → 手動裁切 → 調整順序 → 垂直拼接；本工具無後端、無資料庫、無第三方 API。</text>
+
+  <!-- Layer 1 -->
+  <g>
+    <rect x="40" y="200" width="900" height="110" rx="10" fill="#FBFAF7" stroke="#E7E3DA" stroke-width="1"/>
+    <text x="64" y="228" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.5" fill="#6B7178">LAYER 1 · 使用者 / 瀏覽器</text>
+    <text x="64" y="252" font-family="Georgia,serif" font-size="17" fill="#181B20">輸入來源</text>
+    <text x="64" y="274" font-family="inherit" font-size="12.5" fill="#181B20">手機觸控（第一優先）或桌面滑鼠，直接開啟單一 index.html（file:// 或靜態託管）</text>
+    <text x="64" y="296" font-family="ui-monospace,monospace" font-size="10.5" fill="#6B7178">touchstart/move/end · mousedown/move/up</text>
+  </g>
+  <line x1="490" y1="310" x2="490" y2="352" stroke="#2E4B8F" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="505" y="336" font-family="ui-monospace,monospace" font-size="11" fill="#6B7178">▸ 選擇圖片 / 拖曳裁切 / 調整順序</text>
+
+  <!-- Layer 2 -->
+  <g>
+    <rect x="40" y="352" width="900" height="120" rx="10" fill="#FBFAF7" stroke="#E7E3DA" stroke-width="1"/>
+    <text x="64" y="380" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.5" fill="#6B7178">LAYER 2 · UI 狀態層</text>
+    <text x="64" y="404" font-family="Georgia,serif" font-size="17" fill="#181B20">單一 DOM，三段式狀態切換（無路由 / 無 SPA 框架）</text>
+    <text x="64" y="426" font-family="inherit" font-size="12.5" fill="#181B20">同一 HTML 以 display 切換：上傳區 → 裁切編輯區 → 結果區；畫面順序＝拼接順序</text>
+    <text x="64" y="450" font-family="ui-monospace,monospace" font-size="10.5" fill="#6B7178">.upload-area · .crop-area(crop-item ×N) · .result-area · #limitToast</text>
+  </g>
+  <line x1="490" y1="472" x2="490" y2="514" stroke="#2E4B8F" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="505" y="498" font-family="ui-monospace,monospace" font-size="11" fill="#6B7178">▸ 狀態管理與資安檢查</text>
+
+  <!-- Layer 3 - keystone -->
+  <g>
+    <rect x="40" y="514" width="900" height="230" rx="10" fill="#EAEEF7" stroke="#2E4B8F" stroke-width="2.5"/>
+    <rect x="60" y="502" width="90" height="22" rx="11" fill="#2E4B8F"/>
+    <text x="105" y="517" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1" fill="#FBFAF7">★ KEYSTONE</text>
+    <text x="64" y="548" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.5" fill="#2E4B8F">LAYER 3 · 前端邏輯層 ＋ 資安防護</text>
+    <text x="64" y="574" font-family="Georgia,serif" font-size="18" fill="#181B20">關鍵設計決定：全本機處理、零上傳</text>
+    <text x="64" y="600" font-family="inherit" font-size="12.5" fill="#181B20">所有運算在瀏覽器端完成，圖片從未離開裝置；從架構上直接消除「資料外洩」風險類別，</text>
+    <text x="64" y="620" font-family="inherit" font-size="12.5" fill="#181B20">而非事後補洞。CSP 的 connect-src 'none' 把這個承諾寫進瀏覽器強制執行層級——</text>
+    <text x="64" y="640" font-family="inherit" font-size="12.5" fill="#181B20">就算程式碼被竄改，瀏覽器本身也會擋下任何對外連線嘗試。</text>
+
+    <g font-family="ui-monospace,monospace" font-size="10.5" fill="#181B20">
+      <rect x="64" y="660" width="176" height="24" rx="12" fill="#FBFAF7" stroke="#E7E3DA"/>
+      <text x="152" y="676" text-anchor="middle">selectedFiles/cropData</text>
+      <rect x="252" y="660" width="200" height="24" rx="12" fill="#FBFAF7" stroke="#E7E3DA"/>
+      <text x="352" y="676" text-anchor="middle">自然排序 localeCompare</text>
+      <rect x="464" y="660" width="180" height="24" rx="12" fill="#FBFAF7" stroke="#E7E3DA"/>
+      <text x="554" y="676" text-anchor="middle">escapeHtml() XSS 防護</text>
+      <rect x="656" y="660" width="164" height="24" rx="12" fill="#FBFAF7" stroke="#E7E3DA"/>
+      <text x="738" y="676" text-anchor="middle">CSP connect-src 'none'</text>
+
+      <rect x="64" y="694" width="150" height="24" rx="12" fill="#FBFAF7" stroke="#E7E3DA"/>
+      <text x="139" y="710" text-anchor="middle">MAX_FILES=10</text>
+      <rect x="226" y="694" width="230" height="24" rx="12" fill="#FBFAF7" stroke="#E7E3DA"/>
+      <text x="341" y="710" text-anchor="middle">MAX_SINGLE_PIXELS=16,000,000</text>
+      <rect x="468" y="694" width="230" height="24" rx="12" fill="#FBFAF7" stroke="#E7E3DA"/>
+      <text x="583" y="710" text-anchor="middle">MAX_TOTAL_PIXELS=80,000,000</text>
+    </g>
+  </g>
+  <line x1="490" y1="744" x2="490" y2="786" stroke="#2E4B8F" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="505" y="770" font-family="ui-monospace,monospace" font-size="11" fill="#6B7178">▸ 呼叫瀏覽器原生能力</text>
+
+  <!-- Layer 4 -->
+  <g>
+    <rect x="40" y="786" width="900" height="110" rx="10" fill="#FBFAF7" stroke="#E7E3DA" stroke-width="1"/>
+    <text x="64" y="814" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.5" fill="#6B7178">LAYER 4 · 瀏覽器原生 API</text>
+    <text x="64" y="838" font-family="Georgia,serif" font-size="17" fill="#181B20">零相依：不用任何前端框架或函式庫</text>
+    <text x="64" y="860" font-family="inherit" font-size="12.5" fill="#181B20">Vanilla JS 直接呼叫瀏覽器內建 API 完成讀檔、解碼、裁切與合成，無建置流程</text>
+    <text x="64" y="882" font-family="ui-monospace,monospace" font-size="10.5" fill="#6B7178">FileReader.readAsDataURL · Canvas 2D Context · createImageBitmap · Touch/Mouse Events</text>
+  </g>
+  <line x1="490" y1="896" x2="490" y2="938" stroke="#B03A2E" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="505" y="922" font-family="ui-monospace,monospace" font-size="11" fill="#B03A2E">▸ 對外連線？</text>
+
+  <!-- Layer 5 - none -->
+  <g>
+    <rect x="40" y="938" width="900" height="120" rx="10" fill="#FBFAF7" stroke="#B03A2E" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="64" y="966" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.5" fill="#B03A2E">LAYER 5 · 外部依賴</text>
+    <text x="64" y="990" font-family="Georgia,serif" font-size="17" fill="#181B20">無</text>
+    <text x="64" y="1012" font-family="inherit" font-size="12.5" fill="#181B20">無後端伺服器、無資料庫、無第三方 API、無 CDN、無分析追蹤。</text>
+    <text x="64" y="1032" font-family="inherit" font-size="12.5" fill="#181B20">「階段 2：GitHub Pages」僅是靜態託管規劃，換地方放同一 HTML，非執行期依賴。</text>
+    <text x="64" y="1050" font-family="ui-monospace,monospace" font-size="10.5" fill="#6B7178">（本工具無後端）</text>
+  </g>
+
+  <!-- data flow callout -->
+  <g>
+    <rect x="40" y="1080" width="900" height="120" rx="10" fill="#FBFAF7" stroke="#E7E3DA" stroke-width="1"/>
+    <text x="64" y="1108" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.5" fill="#6B7178">資料主流向</text>
+    <text x="64" y="1134" font-family="inherit" font-size="12.5" fill="#181B20">圖片檔案 → FileReader 讀成 dataURL → 手動框選裁切區域 → Canvas 依座標重繪</text>
+    <text x="64" y="1156" font-family="inherit" font-size="12.5" fill="#181B20">→ 依索引序列化垂直拼接 → 輸出到 resultCanvas。全程留在單一分頁記憶體內，</text>
+    <text x="64" y="1178" font-family="inherit" font-size="12.5" fill="#181B20">重新整理即清空，不寫入 localStorage。</text>
+  </g>
+
+  <!-- build log -->
+  <g font-family="ui-monospace,monospace" font-size="11.5" fill="#6B7178">
+    <text x="40" y="1230" letter-spacing="1.5" fill="#6B7178" font-size="10">已修 BUG（禁止回歸，來自 index.html 開頭 HANDOFF 註解）</text>
+    <text x="40" y="1252"><tspan fill="#1F7A54">✓</tspan> selectFiles 函式定義順序　<tspan fill="#1F7A54">✓</tspan> 手機拖拽紅框　<tspan fill="#1F7A54">✓</tspan> 拼接順序序列化</text>
+    <text x="40" y="1272"><tspan fill="#1F7A54">✓</tspan> 自然排序　<tspan fill="#1F7A54">✓</tspan> 換序保留裁切　<tspan fill="#1F7A54">✓</tspan> resize 重算座標</text>
+    <text x="40" y="1292"><tspan fill="#1F7A54">✓</tspan> 檔名 escapeHtml　<tspan fill="#1F7A54">✓</tspan> isProcessing 拼接鎖</text>
+  </g>
+
+  <line x1="40" y1="1330" x2="940" y2="1330" stroke="#E7E3DA" stroke-width="1"/>
+  <text x="40" y="1354" font-family="ui-monospace,monospace" font-size="10.5" fill="#6B7178">來源：index.html／HANDOFF.md／AGENTS.md／README.md／docs/mockup.html／tests/stitch.spec.ts（實讀，不臆造）</text>
+</svg>

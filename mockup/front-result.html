@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>image-stitcher — Mockup：拼接結果畫面</title>
+<style>
+:root{
+  --paper:#FBFAF7; --ink:#181B20; --muted:#6B7178;
+  --line:#E7E3DA; --accent:#2E4B8F; --accent-soft:#EAEEF7;
+  --ok:#1F7A54; --err:#B03A2E; --warn:#B8860B;
+  --serif:"Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+.wrap{max-width:900px;margin:0 auto;padding:40px 24px 80px;}
+header.top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:8px;flex-wrap:wrap;gap:10px;}
+.wordmark{font-family:var(--serif);font-size:1.4rem;}
+.wordmark .dot{color:var(--accent);}
+.crumbs{font-family:var(--mono);font-size:.72rem;color:var(--muted);}
+.crumbs a{color:var(--accent);text-decoration:none;}
+.state-tag{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);display:inline-block;padding:3px 10px;border-radius:999px;margin:20px 0 6px;}
+h1{font-family:var(--serif);font-weight:500;font-size:1.6rem;margin:0 0 6px;}
+p.note{color:var(--muted);font-size:.88rem;max-width:64ch;margin:0 0 28px;}
+.section-title{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:34px 0 12px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line);}
+
+.device{max-width:420px;margin:0 auto;border:1px solid var(--line);border-radius:14px;padding:24px;background:var(--paper);text-align:center;}
+h3.result-h{font-family:var(--serif);font-weight:500;font-size:1.1rem;margin:0 0 14px;}
+.canvas-wire{border:1px solid var(--line);border-radius:8px;padding:8px;}
+.canvas-wire .row{height:40px;border:1px dashed var(--line);border-radius:4px;display:grid;place-items:center;font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-bottom:6px;}
+.canvas-wire .row:last-child{margin-bottom:0;}
+.btn{display:inline-block;font-family:var(--sans);font-size:.85rem;border:1px solid var(--accent);color:var(--accent);background:var(--paper);border-radius:999px;padding:9px 20px;margin-top:16px;}
+
+.buildlog{margin-top:16px;}
+.buildlog ul{list-style:none;margin:0;padding:0;font-family:var(--mono);font-size:.8rem;}
+.buildlog li{padding:5px 0;color:var(--ink);}
+.buildlog li .glyph{color:var(--ok);margin-right:8px;}
+
+footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="wordmark">image-stitcher<span class="dot">.</span></div>
+    <div class="crumbs"><a href="index.html">← mockup 總覽</a></div>
+  </header>
+
+  <span class="state-tag">前台 · State 4 / 4</span>
+  <h1>拼接結果畫面</h1>
+  <p class="note">對應 <code>.result-area</code>（<code>#resultCanvas</code>）。完成後自動 <code>scrollIntoView({behavior:'smooth'})</code>。目前<strong>沒有下載按鈕</strong>——README/HANDOFF 明確記載「下載 PNG 已依使用者需求移除，僅保留繼續合併」。已實作。</p>
+
+  <div class="section-title">線框稿</div>
+  <div class="device">
+    <h3 class="result-h">拼接結果：</h3>
+    <div class="canvas-wire">
+      <div class="row">位置 1（canvas 內容，垂直拼接）</div>
+      <div class="row">位置 2</div>
+      <div class="row">位置 3</div>
+    </div>
+    <span class="btn">🔄 繼續合併</span>
+  </div>
+
+  <div class="section-title">對應原始碼</div>
+  <div class="buildlog">
+    <ul>
+      <li><span class="glyph">▸</span><b>stitchCroppedImages(canvases)</b> — 依 <code>outputMode</code>（原始/2x/3x/固定 3000px）計算 scaleFactor，逐張 <code>drawImage</code> 疊到 <code>currentY</code></li>
+      <li><span class="glyph">▸</span>索引 0 在最上方，與裁切編輯畫面的「位置 1」一致，順序不會反轉</li>
+      <li><span class="glyph">▸</span><b>continueStitching()</b> — 清空 <code>selectedFiles</code>／<code>cropData</code>／<code>totalPixelSum</code>，回到上傳畫面（不刷新頁面）</li>
+      <li><span class="glyph">▸</span>下載功能：<b>未實作（依使用者需求主動移除）</b>；HANDOFF.md 建議若日後恢復，改用 <code>canvas.toBlob()</code> 而非 <code>toDataURL()</code> 省記憶體</li>
+    </ul>
+  </div>
+
+  <footer>依實讀 index.html 產生（誠實反映真實實作：無下載按鈕）。Galley 視覺語言線框稿。</footer>
+</div>
+</body>
+</html>

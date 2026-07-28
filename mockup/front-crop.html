@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>image-stitcher — Mockup：裁切編輯畫面</title>
+<style>
+:root{
+  --paper:#FBFAF7; --ink:#181B20; --muted:#6B7178;
+  --line:#E7E3DA; --accent:#2E4B8F; --accent-soft:#EAEEF7;
+  --ok:#1F7A54; --err:#B03A2E; --warn:#B8860B;
+  --serif:"Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+.wrap{max-width:900px;margin:0 auto;padding:40px 24px 80px;}
+header.top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:8px;flex-wrap:wrap;gap:10px;}
+.wordmark{font-family:var(--serif);font-size:1.4rem;}
+.wordmark .dot{color:var(--accent);}
+.crumbs{font-family:var(--mono);font-size:.72rem;color:var(--muted);}
+.crumbs a{color:var(--accent);text-decoration:none;}
+.state-tag{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);display:inline-block;padding:3px 10px;border-radius:999px;margin:20px 0 6px;}
+h1{font-family:var(--serif);font-weight:500;font-size:1.6rem;margin:0 0 6px;}
+p.note{color:var(--muted);font-size:.88rem;max-width:64ch;margin:0 0 28px;}
+.section-title{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:34px 0 12px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line);}
+
+.device{max-width:460px;margin:0 auto;border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--paper);}
+.addmore{text-align:center;margin-bottom:16px;}
+.btn{display:inline-block;font-family:var(--sans);font-size:.8rem;border:1px solid var(--accent);color:var(--accent);background:var(--paper);border-radius:999px;padding:7px 18px;}
+.btn.solid{background:var(--accent);color:var(--paper);}
+.btn.warn{border-color:var(--warn);color:var(--warn);}
+
+.card{border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;}
+.card-head{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;font-weight:600;margin-bottom:10px;gap:8px;flex-wrap:wrap;}
+.mini{font-family:var(--mono);font-size:.65rem;border:1px solid var(--line);border-radius:5px;padding:2px 8px;color:var(--muted);}
+.order-row{background:var(--accent-soft);border-radius:6px;padding:6px 10px;font-size:.72rem;color:var(--ink);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.order-row select{font-size:.7rem;border:1px solid var(--line);border-radius:4px;padding:1px 6px;background:var(--paper);}
+.imgbox{position:relative;height:110px;border:1px dashed var(--line);border-radius:6px;background:var(--paper);display:grid;place-items:center;color:var(--muted);font-family:var(--mono);font-size:.68rem;}
+.sel{position:absolute;inset:14px 18px 16px 16px;border:2px solid var(--err);border-radius:2px;}
+.h{position:absolute;width:8px;height:8px;background:var(--err);border:2px solid var(--paper);border-radius:50%;}
+.h.tl{top:-5px;left:-5px}.h.tr{top:-5px;right:-5px}.h.bl{bottom:-5px;left:-5px}.h.br{bottom:-5px;right:-5px}
+.h.tm{top:-5px;left:50%;transform:translateX(-50%)}.h.bm{bottom:-5px;left:50%;transform:translateX(-50%)}
+.h.lm{left:-5px;top:50%;transform:translateY(-50%)}.h.rm{right:-5px;top:50%;transform:translateY(-50%)}
+.cinfo{margin-top:8px;font-family:var(--mono);font-size:.66rem;color:var(--muted);text-align:center;}
+
+.output-row{text-align:center;margin:20px 0 12px;font-size:.8rem;}
+.output-row select{font-size:.76rem;border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:var(--paper);}
+.process-btn{display:block;width:100%;text-align:center;background:var(--accent);color:var(--paper);border:none;border-radius:999px;padding:12px;font-size:.92rem;}
+
+.buildlog{margin-top:16px;}
+.buildlog ul{list-style:none;margin:0;padding:0;font-family:var(--mono);font-size:.8rem;}
+.buildlog li{padding:5px 0;color:var(--ink);}
+.buildlog li .glyph{color:var(--ok);margin-right:8px;}
+
+footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="wordmark">image-stitcher<span class="dot">.</span></div>
+    <div class="crumbs"><a href="index.html">← mockup 總覽</a></div>
+  </header>
+
+  <span class="state-tag">前台 · State 2 / 4</span>
+  <h1>裁切編輯畫面</h1>
+  <p class="note">對應 <code>.crop-area</code>（<code>#cropContainer</code> 內動態產生 <code>.crop-item</code> 卡片）。畫面卡片的上下順序＝拼接順序，這是全工具最核心的互動畫面。已實作。</p>
+
+  <div class="section-title">線框稿</div>
+  <div class="device">
+    <div class="addmore"><span class="btn warn">➕ 新增更多圖片</span></div>
+
+    <div class="card">
+      <div class="card-head"><span>位置 1：1.png</span><span><span class="mini">全選</span> <span class="mini">重設</span></span></div>
+      <div class="order-row"><span>拼接順序</span><select><option>第 1 個位置</option></select></div>
+      <div class="imgbox">img-0（preview-img）
+        <div class="sel"><i class="h tl"></i><i class="h tm"></i><i class="h tr"></i><i class="h lm"></i><i class="h rm"></i><i class="h bl"></i><i class="h bm"></i><i class="h br"></i></div>
+      </div>
+      <div class="cinfo">選取區域：0, 0 - 1080 x 720 px</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>位置 2：2.png</span><span><span class="mini">全選</span> <span class="mini">重設</span></span></div>
+      <div class="order-row"><span>拼接順序</span><select><option>第 2 個位置</option></select></div>
+      <div class="imgbox">img-1（preview-img）
+        <div class="sel" style="inset:10px 26px 24px 22px"><i class="h tl"></i><i class="h tr"></i><i class="h bl"></i><i class="h br"></i></div>
+      </div>
+      <div class="cinfo">選取區域：40, 30 - 980 x 560 px</div>
+    </div>
+
+    <div class="output-row">輸出設定：<select><option>原始大小</option><option>2倍品質</option><option>3倍品質</option><option selected>固定寬度 3000px</option></select></div>
+    <span class="process-btn">開始拼接</span>
+    <p style="font-family:var(--mono);font-size:.65rem;color:var(--muted);text-align:center;margin-top:8px;">連點防呆：處理中會變成「拼接中…」且 disabled（見 isProcessing 鎖）</p>
+  </div>
+
+  <div class="section-title">對應原始碼</div>
+  <div class="buildlog">
+    <ul>
+      <li><span class="glyph">▸</span><b>setupCropInterface(preserve)</b> — 先建佔位節點依索引插入，FileReader 完成後 <code>replaceWith</code> 原地替換，畫面順序不受非同步完成快慢影響</li>
+      <li><span class="glyph">▸</span><b>changeImagePosition(fromIndex,toIndex)</b> — 換序後 <code>selectedFiles</code>/<code>cropData</code> 同步 splice，重建介面</li>
+      <li><span class="glyph">▸</span><b>initializeCrop(index)</b> — 若同一張圖有舊裁切設定，依顯示尺寸比例還原，不會因換序/新增而遺失</li>
+      <li><span class="glyph">▸</span><b>setupCropHandlers(index)</b> — mousedown/touchstart 雙軌，8 個 <code>.crop-handle</code> 各自綁定 resize</li>
+      <li><span class="glyph">▸</span>resize 監聽 200ms debounce 依比例重算所有裁切框座標</li>
+    </ul>
+  </div>
+
+  <footer>依實讀 index.html 產生（非規劃、已實作）。Galley 視覺語言線框稿，非最終視覺樣式（原版為藍/青漸層卡片風格，見 docs/mockup.html）。</footer>
+</div>
+</body>
+</html>

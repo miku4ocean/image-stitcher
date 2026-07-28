@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>image-stitcher — Mockup 總覽</title>
+<style>
+:root{
+  --paper:#FBFAF7; --ink:#181B20; --muted:#6B7178;
+  --line:#E7E3DA; --accent:#2E4B8F; --accent-soft:#EAEEF7;
+  --ok:#1F7A54; --err:#B03A2E; --warn:#B8860B;
+  --serif:"Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+.wrap{max-width:960px;margin:0 auto;padding:48px 24px 80px;}
+header.top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:36px;flex-wrap:wrap;gap:10px;}
+.wordmark{font-family:var(--serif);font-size:1.5rem;}
+.wordmark .dot{color:var(--accent);}
+.doc-meta{font-family:var(--mono);font-size:.72rem;color:var(--muted);text-align:right;}
+
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+h1{font-family:var(--serif);font-size:1.9rem;font-weight:500;margin:0 0 10px;}
+p.lede{color:var(--muted);max-width:68ch;font-size:.92rem;margin:0 0 8px;}
+
+.section-title{font-family:var(--mono);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:44px 0 16px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line);}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+.card{border:1px solid var(--line);border-radius:10px;padding:18px;background:var(--paper);text-decoration:none;color:var(--ink);display:block;transition:border-color .15s;}
+.card:hover{border-color:var(--accent);}
+.card .num{font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.08em;margin-bottom:8px;}
+.card h3{font-family:var(--serif);font-size:1.05rem;font-weight:500;margin:0 0 6px;}
+.card p{font-size:.8rem;color:var(--muted);margin:0;}
+
+.note-box{margin-top:44px;border:1px dashed var(--err);border-radius:10px;padding:18px 20px;background:var(--paper);}
+.note-box .tag{font-family:var(--mono);font-size:.7rem;color:var(--err);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;display:block;}
+.note-box p{font-size:.86rem;margin:0;color:var(--ink);}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-family:var(--mono);font-size:.72rem;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="wordmark">image-stitcher<span class="dot">.</span></div>
+    <div class="doc-meta">MOCKUP INDEX · v1.0<br>2026-07-24</div>
+  </header>
+
+  <div class="eyebrow">Mockup Index</div>
+  <h1>畫面線框稿總覽</h1>
+  <p class="lede">image-stitcher 是單一 HTML 檔的純前端工具，沒有路由、沒有多個頁面檔案——所有畫面都是同一份 <code>index.html</code> 內以 <code>display</code> 切換的 DOM 區塊。以下每個 mockup 對應一個真實存在的畫面狀態，皆已在 <code>index.html</code> 中實作（非規劃）。</p>
+
+  <div class="section-title">前台 · 4 個畫面狀態</div>
+  <div class="grid">
+    <a class="card" href="front-upload.html">
+      <div class="num">STATE 1</div>
+      <h3>上傳空狀態</h3>
+      <p>.upload-area · 初始唯一顯示區塊</p>
+    </a>
+    <a class="card" href="front-crop.html">
+      <div class="num">STATE 2</div>
+      <h3>裁切編輯畫面</h3>
+      <p>.crop-area · crop-item 卡片、換序、新增圖片</p>
+    </a>
+    <a class="card" href="front-processing.html">
+      <div class="num">STATE 3</div>
+      <h3>拼接處理中</h3>
+      <p>#processBtn disabled 狀態（非獨立全畫面）</p>
+    </a>
+    <a class="card" href="front-result.html">
+      <div class="num">STATE 4</div>
+      <h3>拼接結果畫面</h3>
+      <p>.result-area · resultCanvas、繼續合併</p>
+    </a>
+    <a class="card" href="front-toast.html">
+      <div class="num">OVERLAY</div>
+      <h3>提示 / 上限 Toast</h3>
+      <p>#limitToast · 疊加於上傳／裁切畫面之上</p>
+    </a>
+  </div>
+
+  <div class="note-box">
+    <span class="tag">✗ 後台 / 管理介面：不存在</span>
+    <p>已檢視 <code>index.html</code>、<code>HANDOFF.md</code>、<code>AGENTS.md</code>、<code>README.md</code>、<code>package.json</code>：本專案純前端零後端、無伺服器、無資料庫、無登入或管理功能，因此沒有「後台頁面」可供 mockup。路線圖（階段 2 GitHub Pages／階段 3 PWA／階段 4 Tauri）皆屬部署與封裝方式的演進，不涉及新增管理介面。此為誠實標示，非遺漏。</p>
+  </div>
+
+  <footer>依實讀 index.html 與交接文件產生。Galley 視覺語言線框稿，非最終視覺樣式。</footer>
+</div>
+</body>
+</html>

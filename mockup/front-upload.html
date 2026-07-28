@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>image-stitcher — Mockup：上傳空狀態</title>
+<style>
+:root{
+  --paper:#FBFAF7; --ink:#181B20; --muted:#6B7178;
+  --line:#E7E3DA; --accent:#2E4B8F; --accent-soft:#EAEEF7;
+  --ok:#1F7A54; --err:#B03A2E; --warn:#B8860B;
+  --serif:"Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+.wrap{max-width:900px;margin:0 auto;padding:40px 24px 80px;}
+header.top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:8px;flex-wrap:wrap;gap:10px;}
+.wordmark{font-family:var(--serif);font-size:1.4rem;}
+.wordmark .dot{color:var(--accent);}
+.crumbs{font-family:var(--mono);font-size:.72rem;color:var(--muted);}
+.crumbs a{color:var(--accent);text-decoration:none;}
+.state-tag{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);display:inline-block;padding:3px 10px;border-radius:999px;margin:20px 0 6px;}
+h1{font-family:var(--serif);font-weight:500;font-size:1.6rem;margin:0 0 6px;}
+p.note{color:var(--muted);font-size:.88rem;max-width:64ch;margin:0 0 28px;}
+.section-title{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:34px 0 12px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line);}
+
+.device{max-width:420px;margin:0 auto;border:1px solid var(--line);border-radius:14px;padding:24px;background:var(--paper);}
+.wire{border:1px dashed var(--line);border-radius:8px;}
+.upload-box{border:2px dashed var(--accent);border-radius:10px;padding:36px 16px;text-align:center;}
+.upload-box .icon{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-bottom:10px;}
+.upload-box .msg{font-size:.92rem;color:var(--ink);margin-bottom:16px;}
+.btn{display:inline-block;font-family:var(--sans);font-size:.85rem;border:1px solid var(--accent);color:var(--accent);background:var(--paper);border-radius:999px;padding:8px 22px;}
+.btn.solid{background:var(--accent);color:var(--paper);}
+.input-ghost{display:none;}
+.info-box{margin-top:18px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:12px 14px;font-size:.78rem;color:var(--muted);}
+.toast-slot{margin-top:14px;padding:10px 14px;border:1px dashed var(--line);border-radius:8px;font-family:var(--mono);font-size:.7rem;color:var(--muted);text-align:center;}
+
+.buildlog{margin-top:16px;}
+.buildlog ul{list-style:none;margin:0;padding:0;font-family:var(--mono);font-size:.8rem;}
+.buildlog li{padding:5px 0;color:var(--ink);}
+.buildlog li .glyph{color:var(--ok);margin-right:8px;}
+.buildlog li b{color:var(--muted);font-weight:400;}
+
+footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="wordmark">image-stitcher<span class="dot">.</span></div>
+    <div class="crumbs"><a href="index.html">← mockup 總覽</a></div>
+  </header>
+
+  <span class="state-tag">前台 · State 1 / 4</span>
+  <h1>上傳空狀態</h1>
+  <p class="note">對應 index.html 的 <code>.upload-area</code>（初始畫面唯一顯示的區塊，<code>.crop-area</code> 與 <code>.result-area</code> 皆為 <code>display:none</code>）。已實作，非規劃。</p>
+
+  <div class="section-title">線框稿</div>
+  <div class="device">
+    <div class="upload-box wire">
+      <div class="icon">[ icon ]</div>
+      <div class="msg">點擊選擇要拼接的圖片文件</div>
+      <span class="btn solid">選擇圖片</span>
+      <div class="input-ghost">input#fileInput type=file multiple accept=image/*</div>
+    </div>
+    <div class="info-box">
+      使用說明：選擇多張截圖後，每張圖片都會顯示裁切框。圖片依檔名排序，畫面上的順序就是拼接順序（第 1 個在最上方）。可用「拼接順序」下拉選單調整位置，也可隨時新增更多圖片。
+    </div>
+    <div class="toast-slot">#limitToast（此狀態下 display:none，見 front-toast.html）</div>
+  </div>
+
+  <div class="section-title">對應原始碼</div>
+  <div class="buildlog">
+    <ul>
+      <li><span class="glyph">▸</span>觸發函式：<b>selectFiles()</b> → <code>#fileInput</code>.click()</li>
+      <li><span class="glyph">▸</span>接手函式：<b>handleFiles(fileList)</b> → 過濾 image/*、自然排序、<code>checkAndAddFiles()</code></li>
+      <li><span class="glyph">▸</span>零學習成本：整個虛線框皆可點擊（<code>onclick="selectFiles()"</code>），觸控熱區大於單一按鈕</li>
+    </ul>
+  </div>
+
+  <footer>依實讀 index.html 產生（非規劃、已實作）。Galley 視覺語言線框稿，非最終視覺樣式。</footer>
+</div>
+</body>
+</html>

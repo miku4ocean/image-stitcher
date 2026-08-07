@@ -188,6 +188,7 @@ image-stitcher/
             <canvas id="resultCanvas" class="result-canvas"></canvas>
             <div class="download-btns">
                 <button class="download-btn" id="downloadBtn" onclick="downloadResult()">📥 下載圖片</button>
+                <button class="download-btn" id="shareBtn" onclick="shareResult()" style="display:none">📤 分享</button>
                 <button class="download-btn" onclick="continueStitching()">🔄 繼續合併</button>
             </div>
         </div>
@@ -681,7 +682,23 @@ function stitchCroppedImages(canvases) {
         }
     }
     document.getElementById('resultArea').style.display = 'block';
+    // 手機支援 Web Share API 且可分享檔案時，顯示分享按鈕
+    var shareBtn = document.getElementById('shareBtn');
+    if (shareBtn && navigator.share && navigator.canShare) {
+        shareBtn.style.display = '';
+    }
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth' });
+}
+
+// 分享拼接結果：使用 Web Share API（手機上比長按存圖更順手），僅在支援時顯示按鈕
+function shareResult() {
+    var canvas = document.getElementById('resultCanvas');
+    if (!canvas || !navigator.share) return;
+    canvas.toBlob(function(blob) {
+        if (!blob) return;
+        var file = new File([blob], 'stitched.png', { type: 'image/png' });
+        navigator.share({ files: [file], title: '拼接結果' }).catch(function() { /* 使用者取消分享，靜默處理 */ });
+    }, 'image/png');
 }
 
 // 下載拼接結果：使用 toBlob（比 toDataURL 省記憶體），下載後立即釋放 URL

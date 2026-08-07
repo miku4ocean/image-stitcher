@@ -616,8 +616,18 @@ function processImages() {
 
 function cropAndLoadImage(index, callback) {
     var reader = new FileReader();
+    // 讀檔失敗（檔案已刪、權限不足等）：回傳 null，讓 stitchCroppedImages 跳過此張
+    reader.onerror = function() {
+        console.warn('[拼接] 讀取第 ' + (index + 1) + ' 張圖片失敗，已跳過');
+        callback(null);
+    };
     reader.onload = function(e) {
         var img = new Image();
+        // 圖片解碼失敗（損毀檔案等）：回傳 null，讓 stitchCroppedImages 跳過此張
+        img.onerror = function() {
+            console.warn('[拼接] 第 ' + (index + 1) + ' 張圖片解碼失敗，已跳過');
+            callback(null);
+        };
         img.onload = function() {
             var data = cropData[index];
             var canvas = document.createElement('canvas');
@@ -656,7 +666,10 @@ function stitchCroppedImages(canvases) {
             totalHeight += canvases[i].height;
         }
     }
-    if (maxWidth === 0) return;
+    if (maxWidth === 0) {
+        showToast('⚠️ 所有圖片皆處理失敗，無法產生拼接結果', true);
+        return;
+    }
     switch (outputMode) {
         case '2x': scaleFactor = 2; break;
         case '3x': scaleFactor = 3; break;

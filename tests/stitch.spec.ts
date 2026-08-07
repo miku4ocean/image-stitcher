@@ -327,6 +327,25 @@ test.describe('圖片拼接工具', () => {
     await expect(uploadArea).toContainText('拖放');
   });
 
+  test('單張圖片解碼失敗時不卡死，其餘正常拼接（降級處理）', async ({ page }) => {
+    await page.goto('file://' + path.resolve('index.html'));
+    // 用正常圖片 + 一張「內容非圖片但 MIME 偽稱 image/png」的損壞檔案
+    const goodBuffer = fs.readFileSync(FIX('1.png'));
+    const badBuffer = Buffer.from('this is not a valid png file');
+    await page.setInputFiles('#fileInput', [
+      { name: '1.png', mimeType: 'image/png', buffer: goodBuffer },
+      { name: 'corrupt.png', mimeType: 'image/png', buffer: badBuffer },
+    ]);
+    await page.waitForSelector('.crop-selection');
+    await page.click('#processBtn');
+    // 拼接應完成（不卡死），結果 canvas 應有內容（只剩好的那張）
+    await page.waitForSelector('#resultArea', { state: 'visible' });
+    const width = await page.locator('#resultCanvas').evaluate(
+      (c: HTMLCanvasElement) => c.width
+    );
+    expect(width).toBeGreaterThan(0);
+  });
+
   test('上傳區域支援鍵盤操作（Enter/Space 觸發選檔）', async ({ page }) => {
     await page.goto('file://' + path.resolve('index.html'));
     const uploadArea = page.locator('.upload-area');

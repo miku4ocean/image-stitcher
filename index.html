@@ -115,6 +115,9 @@ image-stitcher/
         .output-controls select { padding: 8px 12px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 1em; }
         .process-btn { background: linear-gradient(45deg,#27ae60,#2ecc71); color: white; border: none; padding: 15px 40px; border-radius: 25px; cursor: pointer; font-size: 1.2em; font-weight: 500; box-shadow: 0 4px 15px rgba(39,174,96,0.3); }
         .process-btn:disabled { opacity: 0.6; cursor: wait; }
+        .progress-bar { display: none; margin: 12px auto 0; max-width: 300px; height: 8px; background: #e3e8ee; border-radius: 99px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00CED1, #0FA3A6); border-radius: 99px; transition: width 0.3s ease; }
+        .progress-text { display: none; text-align: center; color: #6c7a89; font-size: 0.9em; margin-top: 8px; }
         .result-area { margin-top: 30px; display: none; text-align: center; }
         .result-canvas { max-width: 100%; border: 2px solid #ecf0f1; border-radius: 10px; margin: 20px 0; }
         .download-btns { margin-top: 20px; }
@@ -176,6 +179,8 @@ image-stitcher/
                     </select>
                 </div>
                 <button class="process-btn" id="processBtn" onclick="processImages()">開始拼接</button>
+                <div class="progress-bar" id="progressBar"><div class="progress-bar-fill" id="progressFill"></div></div>
+                <div class="progress-text" id="progressText"></div>
             </div>
         </div>
         <div class="result-area" id="resultArea">
@@ -577,16 +582,27 @@ function processImages() {
     if (isProcessing) return;
     isProcessing = true;
     var btn = document.getElementById('processBtn');
+    var progressBar = document.getElementById('progressBar');
+    var progressFill = document.getElementById('progressFill');
+    var progressText = document.getElementById('progressText');
     if (btn) { btn.disabled = true; btn.textContent = '拼接中...'; }
+    var total = selectedFiles.length;
+    if (progressBar) progressBar.style.display = 'block';
+    if (progressText) { progressText.style.display = 'block'; progressText.textContent = '處理第 1 / ' + total + ' 張'; }
+    if (progressFill) progressFill.style.width = '0%';
 
     var processedImages = [];
     function processImageAtIndex(index) {
-        if (index >= selectedFiles.length) {
+        if (index >= total) {
             stitchCroppedImages(processedImages);
             isProcessing = false;
             if (btn) { btn.disabled = false; btn.textContent = '開始拼接'; }
+            if (progressBar) progressBar.style.display = 'none';
+            if (progressText) progressText.style.display = 'none';
             return;
         }
+        if (progressText) progressText.textContent = '處理第 ' + (index + 1) + ' / ' + total + ' 張';
+        if (progressFill) progressFill.style.width = Math.round(((index + 1) / total) * 100) + '%';
         cropAndLoadImage(index, function(croppedCanvas) {
             processedImages[index] = croppedCanvas;
             processImageAtIndex(index + 1);

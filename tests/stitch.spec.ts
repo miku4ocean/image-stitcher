@@ -271,6 +271,38 @@ test.describe('圖片拼接工具', () => {
     expect(alerts.length).toBe(0);
   });
 
+  test('拼接時顯示進度文字（處理第 N / 總數 張）', async ({ page }) => {
+    await page.goto('file://' + path.resolve('index.html'));
+    await page.setInputFiles('#fileInput', [FIX('1.png'), FIX('2.png'), FIX('3.png')]);
+    await page.waitForSelector('.crop-selection');
+
+    // 攔截進度文字的變化：用 MutationObserver 記錄 progressText 的 textContent 歷程
+    await page.evaluate(() => {
+      // @ts-ignore
+      window.__progressLog = [];
+      const el = document.getElementById('progressText');
+      if (el) {
+        new MutationObserver(() => {
+          // @ts-ignore
+          window.__progressLog.push(el.textContent);
+        }).observe(el, { childList: true, characterData: true, subtree: true });
+      }
+    });
+
+    await page.click('#processBtn');
+    await page.waitForSelector('#resultArea', { state: 'visible' });
+
+    const log: string[] = await page.evaluate(() => {
+      // @ts-ignore
+      return window.__progressLog;
+    });
+    // 應至少出現過「處理第 1 / 3 張」的文字
+    expect(log.some((t) => t.includes('1 / 3'))).toBe(true);
+    // 完成後進度元素應隱藏
+    await expect(page.locator('#progressBar')).toBeHidden();
+    await expect(page.locator('#progressText')).toBeHidden();
+  });
+
   test('拖放檔案到上傳區域觸發裁切介面', async ({ page }) => {
     await page.goto('file://' + path.resolve('index.html'));
     // Playwright 的 setInputFiles 無法模擬 drag-and-drop，但我們可以驗證

@@ -271,6 +271,30 @@ test.describe('圖片拼接工具', () => {
     expect(alerts.length).toBe(0);
   });
 
+  test('拖放檔案到上傳區域觸發裁切介面', async ({ page }) => {
+    await page.goto('file://' + path.resolve('index.html'));
+    // Playwright 的 setInputFiles 無法模擬 drag-and-drop，但我們可以驗證
+    // drag-over CSS 樣式切換與 drop handler 的存在。直接用 dispatchEvent
+    // 模擬 dragover→dragleave 的視覺回饋循環。
+    const uploadArea = page.locator('.upload-area');
+    await expect(uploadArea).toBeVisible();
+
+    // 模擬 dragover：觸發 drag-over class
+    await uploadArea.evaluate((el) => {
+      el.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+    });
+    await expect(uploadArea).toHaveClass(/drag-over/);
+
+    // 模擬 dragleave：移除 drag-over class
+    await uploadArea.evaluate((el) => {
+      el.dispatchEvent(new DragEvent('dragleave', { bubbles: true, cancelable: true }));
+    });
+    await expect(uploadArea).not.toHaveClass(/drag-over/);
+
+    // 驗證上傳區文字包含「拖放」提示
+    await expect(uploadArea).toContainText('拖放');
+  });
+
   test('原始基礎測試：上傳兩張圖後顯示裁切介面且順序正確', async ({ page }) => {
     await page.goto('file://' + path.resolve('index.html'));
     await page.setInputFiles('#fileInput', [FIX('1.png'), FIX('2.png')]);

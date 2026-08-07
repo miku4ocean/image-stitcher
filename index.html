@@ -72,6 +72,7 @@ image-stitcher/
         h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 2.2em; font-weight: 300; }
         .upload-area { border: 3px solid #3498db; border-radius: 15px; padding: 40px; text-align: center; margin-bottom: 30px; background: rgba(52,152,219,0.05); cursor: pointer; transition: all 0.3s ease; }
         .upload-area:hover { border-color: #2980b9; background: rgba(52,152,219,0.1); }
+        .upload-area.drag-over { border-color: #27ae60; background: rgba(39,174,96,0.15); border-style: solid; }
         .upload-text { color: #34495e; font-size: 1.2em; margin-bottom: 15px; }
         .upload-btn { background: linear-gradient(45deg,#3498db,#2980b9); color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 1.1em; }
         .file-input { display: none; }
@@ -143,7 +144,7 @@ image-stitcher/
     <div class="container">
         <h1>🖼️ 圖片拼接工具 - 手動裁切版</h1>
         <div class="upload-area" onclick="selectFiles()">
-            <div class="upload-text">點擊選擇要拼接的圖片文件</div>
+            <div class="upload-text">點擊選擇或拖放圖片至此處</div>
             <button class="upload-btn">選擇圖片</button>
             <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
         </div>
@@ -688,6 +689,32 @@ document.addEventListener('DOMContentLoaded', function() {
         additionalFileInput.addEventListener('change', function(e) {
             if (e.target.files.length > 0) addFilesToExisting(e.target.files);
             e.target.value = '';
+        });
+    }
+    // 桌面拖放檔案：拖入上傳區域即可選取圖片（與點擊選取走同一流程）
+    var uploadArea = document.querySelector('.upload-area');
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.add('drag-over');
+        });
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('drag-over');
+        });
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('drag-over');
+            if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+                if (selectedFiles.length > 0) {
+                    addFilesToExisting(e.dataTransfer.files);
+                } else {
+                    handleFiles(e.dataTransfer.files);
+                }
+            }
         });
     }
     // 手機：拖拽中禁止頁面滾動，並將觸控轉發給拖拽處理器

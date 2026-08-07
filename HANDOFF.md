@@ -1,8 +1,32 @@
 # HANDOFF — image-stitcher
-更新：2026-07-28／claude code
+更新：2026-08-07／claude code
 
 ## 目前目標
-階段 3（PWA）已完成。下一步：階段 4（Tauri）仍待使用者確認，不在本次範圍。
+階段 3（PWA）已完成，UX 打磨已完成。下一步：階段 4（Tauri）仍待使用者確認，不在本次範圍。
+
+## 本輪交付（2026-08-07，8 項 UX/品質改善）
+1. **Meta description + OG tags**：加入 `<meta name="description">` 與 Open Graph 標籤，
+   提升 GitHub Pages 搜尋與分享預覽效果。
+2. **桌面拖放上傳**：上傳區域支援 HTML5 drag-and-drop，拖入時邊框變綠色提示，
+   放開即走既有 handleFiles/addFilesToExisting 流程。
+3. **裁切框外暗化**：使用 `box-shadow: 0 0 0 9999px rgba(0,0,0,0.45)` 讓裁切框外蓋上
+   半透明遮罩，保留範圍一目瞭然（mockup 建議的「可加強」項）。
+4. **拼接進度條**：拼接過程中顯示「處理第 N / 總數 張」文字與漸層進度條，
+   完成後自動隱藏（mockup 設計稿的進度可視化建議）。
+5. **下載 PNG 按鈕**：使用 `canvas.toBlob` + `createObjectURL`（比 toDataURL 省記憶體），
+   下載後 `revokeObjectURL` 釋放。檔名含時間戳 `stitched_YYYYMMDD_HHmm.png`。
+6. **Web Share API**：手機支援 `navigator.share` 時顯示「分享」按鈕，可直接分享 PNG
+   到 LINE、iMessage 等 App。桌面不支援時按鈕自動隱藏。
+7. **無障礙改善**：上傳區域加入 `role=button` + `tabindex=0` + 鍵盤 Enter/Space 觸發，
+   `focus-visible` 外框樣式，toast 改 `role=alert` + `aria-live=assertive`，
+   進度文字加 `aria-live=polite`。
+8. **降級處理（bug fix）**：`cropAndLoadImage` 補齊 `reader.onerror` 與 `img.onerror`，
+   單張失敗回傳 null 讓 `stitchCroppedImages` 跳過，全部失敗時顯示 toast。
+   修復原本單張解碼失敗會導致整個拼接流程永久卡死的 bug。
+
+## 測試結果
+- `npx playwright test`：19 條全綠（原 14 條零回歸 + 新增 5 條）
+- `--repeat-each=2`：38 次執行全綠，無 flaky
 
 ## 階段 3 部署紀錄（2026-07-28）
 - **manifest.json**：name/short_name「圖片拼接工具」、display: standalone、
@@ -17,25 +41,6 @@
 - **index.html 最小改動**：只加 `<link rel="manifest">`、
   `<meta name="theme-color" content="#00CED1">`、apple-touch-icon link，
   以及一段獨立的 SW 註冊 `<script>`（不動原本的 script 區塊，8 個已修 bug 邏輯零異動）。
-- **測試環境**：新增 `scripts/dev-server.js`（零相依純 Node 靜態伺服器，因 service worker
-  需要 http(s) 才能註冊，file:// 不支援），`playwright.config.ts` 新增 `webServer` 設定
-  （自動啟停，僅供 `tests/pwa.spec.ts` 使用；既有 `tests/stitch.spec.ts` 仍走
-  `page.goto('file://...')`，完全不受影響）。
-
-## 階段 3 驗收結果
-- `npx playwright test`：14 條全綠（既有 10 條 stitch.spec.ts 零回歸 + 新增 4 條
-  pwa.spec.ts：manifest 內容驗證、index.html 引用驗證、SW 註冊成功、離線 reload 仍可載入）。
-  `--repeat-each=3`（42 次執行）同樣全綠，無 flaky。
-- 手動起本機 server（`PORT=8799 node scripts/dev-server.js &`，記錄 PID 後用 `kill $PID`
-  精準關閉，未用 pkill/killall）以 Playwright script 驗證 SW 快取行為，實際 console log：
-  - 第一次載入：`[SW] install：precache 開始 → [...]`（precache 寫入）
-  - 第二次導覽：`[SW] cache hit: http://localhost:8799/index.html`
-  - 手動清掉單一快取項目後重新請求：`[SW] cache miss, fetching: http://localhost:8799/manifest.json`
-  - 再次重新整理：`[SW] cache hit: http://localhost:8799/manifest.json`
-- 備註：因採「install 時主動 precache」策略（非被動 lazy cache-on-first-fetch），
-  瀏覽器對「頁面自身的第一次導覽請求」本來就不會被尚在安裝中的 SW 攔截
-  （這是標準 SW 行為，非 bug）；故用「清掉單一快取項目→重新請求→再次命中」的方式，
-  額外驗證 miss→fetch→補寫入→hit 的完整循環確實運作正常。
 
 ## 階段 2 部署紀錄（2026-07-26）
 - 密鑰掃描：全歷史（`git rev-list --all` 逐 commit `git grep`）＋工作區（含未追蹤檔案）掃描
@@ -49,40 +54,29 @@
 ## 狀態
 - 已完成：核心功能（上傳／裁切／換序／垂直拼接），8 個已修 bug 全數保留未回歸（見 index.html 開頭註解）
 - 已完成：兩項資安補強 —— CSP meta、張數／像素上限（畫面內 toast 阻擋，非 alert）
-- 已完成：Playwright 十四項驗證（原 10 條 + PWA 4 條），實跑全綠、`--repeat-each` 多次無 flaky
+- 已完成：Playwright 十九項驗證（原 10 條 stitch + 4 條 PWA + 新增 5 條 UX），實跑全綠
 - 已完成：PWA（manifest／icons／service worker／離線可用）
+- 已完成：UX 打磨（拖放上傳、裁切暗化、進度條、下載、分享、鍵盤無障礙、降級處理）
 
-## 資安補強內容（依 docs/mockup.html 資安總表，已從「待實作」改為「已具備」）
+## 資安補強內容（依 docs/mockup.html 資安總表，全部「已具備」）
 1. **CSP**（index.html `<head>`）：
    `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; base-uri 'none'`
-   已實測：`file://` 開啟、上傳／裁切／拼接／`canvas.toDataURL()` 匯出全程無 CSP 違規（console 無 CSP 相關訊息）。
-   注意：`connect-src 'none'` 也會擋掉頁面內任何 `fetch()`/XHR（包含測試用途），
-   pwa.spec.ts 驗證 manifest.json 內容時改用 Playwright 的 `request` context（不經過頁面 CSP）。
-2. **記憶體上限**（index.html `<script>` 內新增常數與函式）：
-   - `MAX_FILES = 10`（張數上限，超過提示「建議一次不超過 10 張」）
-   - `MAX_SINGLE_PIXELS = 4000 × 4000`（單張像素上限）
-   - `MAX_TOTAL_PIXELS = 80,000,000`（總像素上限，約 10 張 8MP 圖片的總合）
-   - 用 `createImageBitmap` 取得尺寸做檢查，超過任一項則用 `#limitToast`（黃色、非 alert）友善阻擋，不進入裁切流程；訊息 5 秒後自動消失。
-
-## 這次順手修的一個既有小 bug（非「8 個不可回歸」名單內，但屬同類問題）
-`setupCropInterface`／`createCropItem` 原本用「FileReader 完成順序」決定裁切卡片的 DOM 插入順序（並行、無鎖），
-在檔案數較多時卡片視覺順序可能與實際陣列順序不一致（雖然 `selectedFiles`/最終拼接順序仍正確，只是畫面卡片可能跳位，
-容易誤導使用者）。已改為「先依索引建立佔位節點、FileReader 完成後用 `replaceWith` 原地替換」，確保畫面卡片順序
-永遠＝陣列順序，不受非同步完成快慢影響。不影響 8 個已修 bug 的既有邏輯。
+2. **記憶體上限**：MAX_FILES=10、MAX_SINGLE_PIXELS=16MP、MAX_TOTAL_PIXELS=80MP
+3. **降級處理**：reader.onerror + img.onerror 回呼，失敗不卡死
 
 ## 8 個不可回歸的已修 bug（全文見 index.html 開頭，逐項已用 Playwright 驗證未回歸）
 1. selectFiles 函式定義順序 2. 手機拖拽紅框（touch 事件＋touch-action:none）3. 拼接順序序列化＋依索引寫入 4. 自然排序 localeCompare numeric 5. 換序/新增保留 cropData 6. resize debounce 重算座標 7. 檔名 escapeHtml 8. isProcessing 拼接鎖
 
 ## Playwright 驗收（npm test / npx playwright test）
-- 環境：`npm init -y` + `@playwright/test` + `npx playwright install chromium`；`playwright.config.ts`（testDir=tests, chromium, 新增 webServer 供 pwa.spec.ts 使用）
-- 測試圖：`tests/fixtures/generate.js`（零相依，純 Node zlib 手刻 PNG）產生 1.png ~ 11.png（可辨識漸層色，供拼接順序像素取樣驗證）；惡意檔名 `<script>alert(1)</script>.png` 因含 `/` 無法作為真實檔名，改用 `page.setInputFiles({name, buffer})` 動態指定檔名
-- 14 條測試（stitch.spec.ts 原 10 條 + pwa.spec.ts 新 4 條），`npx playwright test` 全綠；`--repeat-each=3`（42 次執行）全綠，無 flaky
+- 環境：`@playwright/test` + chromium；`playwright.config.ts`（testDir=tests, chromium, webServer 供 pwa.spec.ts）
+- 19 條測試（stitch.spec.ts 15 條 + pwa.spec.ts 4 條），全綠
 
 ## 下一步（接手的人從這裡開始）
 1. 階段 2 GitHub Pages 部署已完成，網址 https://miku4ocean.github.io/image-stitcher/
-2. 階段 3 PWA 已完成（本機驗證見上）；若要在 GitHub Pages 上實測「離線安裝」，
-   push 後直接用手機瀏覽器開網址、加入主畫面測試即可（HTTPS 環境，SW 可正常運作）
+2. 階段 3 PWA 已完成（本機驗證見上）；push 後用手機瀏覽器開網址、加入主畫面測試即可
 3. **等使用者確認後**才議階段 4（Tauri）
+4. 已知限制：無 EXIF 方向處理（iPhone 直拍可能旋轉），可用 `createImageBitmap`
+   的 `imageOrientation:'from-image'` 改寫 `cropAndLoadImage`，但需改核心路徑
 
 ## 地雷（別踩）
 - 8 個已修 bug 絕不可回歸；維持單一 HTML／零相依／零建置
@@ -95,4 +89,4 @@
   且測試驗證時要用 Playwright 的 `request` context 繞過頁面 CSP，而不是弱化 CSP 本身
 
 ## 主辦權
-單線（claude code 接手，補資安＋測試＋PWA）
+單線（claude code 接手，補資安＋測試＋PWA＋UX 打磨）

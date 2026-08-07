@@ -327,6 +327,31 @@ test.describe('圖片拼接工具', () => {
     await expect(uploadArea).toContainText('拖放');
   });
 
+  test('上傳區域支援鍵盤操作（Enter/Space 觸發選檔）', async ({ page }) => {
+    await page.goto('file://' + path.resolve('index.html'));
+    const uploadArea = page.locator('.upload-area');
+    // 應有 role=button 和 tabindex=0
+    await expect(uploadArea).toHaveAttribute('role', 'button');
+    await expect(uploadArea).toHaveAttribute('tabindex', '0');
+
+    // 監聽 fileInput 的 click 事件（代表鍵盤觸發了選檔）
+    await page.evaluate(() => {
+      // @ts-ignore
+      window.__fileInputClicked = false;
+      const fi = document.getElementById('fileInput');
+      if (fi) fi.addEventListener('click', () => { /* @ts-ignore */ window.__fileInputClicked = true; });
+    });
+
+    // Tab 聚焦到上傳區域後按 Enter
+    await uploadArea.focus();
+    await page.keyboard.press('Enter');
+    const clicked = await page.evaluate(() => {
+      // @ts-ignore
+      return window.__fileInputClicked;
+    });
+    expect(clicked).toBe(true);
+  });
+
   test('原始基礎測試：上傳兩張圖後顯示裁切介面且順序正確', async ({ page }) => {
     await page.goto('file://' + path.resolve('index.html'));
     await page.setInputFiles('#fileInput', [FIX('1.png'), FIX('2.png')]);

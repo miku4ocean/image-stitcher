@@ -73,6 +73,7 @@ image-stitcher/
         .upload-area { border: 3px solid #3498db; border-radius: 15px; padding: 40px; text-align: center; margin-bottom: 30px; background: rgba(52,152,219,0.05); cursor: pointer; transition: all 0.3s ease; }
         .upload-area:hover { border-color: #2980b9; background: rgba(52,152,219,0.1); }
         .upload-area.drag-over { border-color: #27ae60; background: rgba(39,174,96,0.15); border-style: solid; }
+        .upload-area:focus-visible { outline: 3px solid #3498db; outline-offset: 2px; }
         .upload-text { color: #34495e; font-size: 1.2em; margin-bottom: 15px; }
         .upload-btn { background: linear-gradient(45deg,#3498db,#2980b9); color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 1.1em; }
         .file-input { display: none; }
@@ -147,12 +148,12 @@ image-stitcher/
 <body>
     <div class="container">
         <h1>🖼️ 圖片拼接工具 - 手動裁切版</h1>
-        <div class="upload-area" onclick="selectFiles()">
+        <div class="upload-area" onclick="selectFiles()" role="button" tabindex="0" aria-label="點擊選擇或拖放圖片至此處" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectFiles();}">
             <div class="upload-text">點擊選擇或拖放圖片至此處</div>
             <button class="upload-btn">選擇圖片</button>
             <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
         </div>
-        <div class="limit-toast" id="limitToast" role="status"></div>
+        <div class="limit-toast" id="limitToast" role="alert" aria-live="assertive"></div>
         <div class="info-box">
             <strong>使用說明：</strong><br>
             • 選擇多張截圖後，每張圖片都會顯示裁切框<br>
@@ -180,7 +181,7 @@ image-stitcher/
                 </div>
                 <button class="process-btn" id="processBtn" onclick="processImages()">開始拼接</button>
                 <div class="progress-bar" id="progressBar"><div class="progress-bar-fill" id="progressFill"></div></div>
-                <div class="progress-text" id="progressText"></div>
+                <div class="progress-text" id="progressText" role="status" aria-live="polite"></div>
             </div>
         </div>
         <div class="result-area" id="resultArea">

@@ -335,6 +335,27 @@ test.describe('圖片拼接工具', () => {
     await expect(names.nth(1)).toContainText('2.png');
   });
 
+  test('拼接後可下載 PNG 圖片（toBlob 方式）', async ({ page }) => {
+    await page.goto('file://' + path.resolve('index.html'));
+    await page.setInputFiles('#fileInput', [FIX('1.png'), FIX('2.png')]);
+    await page.waitForSelector('.crop-selection');
+    await page.click('#processBtn');
+    await page.waitForSelector('#resultArea', { state: 'visible' });
+
+    // 下載按鈕應可見
+    const downloadBtn = page.locator('#downloadBtn');
+    await expect(downloadBtn).toBeVisible();
+    await expect(downloadBtn).toContainText('下載圖片');
+
+    // 攔截下載事件：監聽 page 的 download 事件（Playwright 會自動攔截）
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      downloadBtn.click(),
+    ]);
+    // 檔名應以 stitched_ 開頭、.png 結尾
+    expect(download.suggestedFilename()).toMatch(/^stitched_\d{8}_\d{4}\.png$/);
+  });
+
   test('原始基礎測試：拼接後結果 canvas 有內容', async ({ page }) => {
     await page.goto('file://' + path.resolve('index.html'));
     await page.setInputFiles('#fileInput', [FIX('1.png'), FIX('2.png')]);

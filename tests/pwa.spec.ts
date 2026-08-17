@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import path from 'path';
+import fs from 'fs';
+import { makeSolidPng } from './fixtures/pngHelper';
 
 // PWA（階段 3）相關驗證。這組測試走 http://localhost（playwright.config.ts 的 webServer），
 // 因為 service worker 需要 http(s) 環境才能註冊，file:// 協定不支援；
@@ -65,5 +68,63 @@ test.describe('PWA', () => {
     await expect(page.locator('.upload-area')).toBeVisible();
 
     await context.setOffline(false);
+  });
+
+  test('離線模式：上傳圖片＋拼接功能全程可用（純前端邏輯，不需要網路）', async ({ page, context }) => {
+    await page.goto('/index.html');
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    await page.waitForTimeout(500);
+
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.locator('.upload-area')).toBeVisible();
+
+    const solidPng = makeSolidPng(120, 90, [10, 200, 90]);
+    await page.setInputFiles('#fileInput', [
+      { name: 'offline-test.png', mimeType: 'image/png', buffer: solidPng },
+    ]);
+    await page.waitForSelector('.crop-selection');
+    await page.waitForFunction(() => {
+      // @ts-ignore
+      const cd = window.cropData;
+      return cd && cd[0] && cd[0].cropRect;
+    });
+    await page.click('#processBtn');
+    await page.waitForSelector('#resultArea', { state: 'visible' });
+    const width = await page.locator('#resultCanvas').evaluate((c: HTMLCanvasElement) => c.width);
+    expect(width).toBeGreaterThan(0);
+
+    await context.setOffline(false);
+  });
+
+  test('Service Worker 快取版本號（CACHE_NAME）測試前後一致，且測試不變動 sw.js／manifest.json', async ({ page, context }) => {
+    // 先記錄原始檔案內容，證明這輪測試本身沒有動到這兩個受保護的檔案
+    const swPath = path.resolve(__dirname, '..', 'sw.js');
+    const manifestPath = path.resolve(__dirname, '..', 'manifest.json');
+    const swBefore = fs.readFileSync(swPath, 'utf-8');
+    const manifestBefore = fs.readFileSync(manifestPath, 'utf-8');
+
+    await page.goto('/index.html');
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    await page.waitForTimeout(500);
+    const cacheNamesBefore = await page.evaluate(() => caches.keys());
+
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.locator('.upload-area')).toBeVisible();
+    const cacheNamesAfter = await page.evaluate(() => caches.keys());
+    await context.setOffline(false);
+
+    // sw.js 目前的 CACHE_NAME 是 'image-stitcher-toolbox-v1'；離線 reload 前後都應該是同一個版本，
+    // 不會憑空冒出新版快取，也不會把舊版清掉又建一個不同名字的
+    expect(cacheNamesBefore).toEqual(['image-stitcher-toolbox-v1']);
+    expect(cacheNamesAfter).toEqual(['image-stitcher-toolbox-v1']);
+
+    expect(fs.readFileSync(swPath, 'utf-8')).toBe(swBefore);
+    expect(fs.readFileSync(manifestPath, 'utf-8')).toBe(manifestBefore);
   });
 });

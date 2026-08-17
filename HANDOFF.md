@@ -1,10 +1,55 @@
 # HANDOFF — image-stitcher
-更新：2026-08-07／claude code
+更新：2026-08-17／claude code
 
 ## 目前目標
 階段 3（PWA）已完成，UX 打磨已完成。下一步：階段 4（Tauri）仍待使用者確認，不在本次範圍。
 
-## 本輪交付（2026-08-07，8 項 UX/品質改善）
+## 本輪交付（2026-08-17，QA 深化：補齊拼接品質／觸控／PWA離線／手機版面四大類測試）
+既有 19 條測試只涵蓋互動流程與 8 個已修 bug 的迴歸，**完全沒有像素級驗證拼接輸出、
+沒有真正的觸控事件測試、PWA 離線只測了「頁面能載入」、也沒有 375px 手機版面驗證**。
+本輪針對這四個缺口補測試，新增 4 個測試檔：
+
+1. **`tests/fixtures/pngHelper.ts`**（新增）：沿用 `generate.js` 的零相依手刻 PNG 手法
+   （純 Node `zlib`），參數化成 `makeSolidPng(w,h,rgb)` 與
+   `makeHorizontalSplitPng(w,h,topRgb,bottomRgb,splitY)`，供測試動態產生「刻意不同尺寸／
+   刻意雙色」的合成圖片，不需要額外的固定 fixture 檔案，也沒有引入任何新 npm 相依套件。
+2. **`tests/quality.spec.ts`**（新增，5 條）：拼接產出品質像素級驗證。
+   讀 `index.html` 的 `stitchCroppedImages()` 確認演算法規則：**輸出寬度＝三張裁切後
+   畫布中最寬的那張**（不是固定值、也不是取第一張），高度＝裁切後總和，每張圖以
+   `(finalWidth-scaledWidth)/2` 置中、兩側留白。用三張刻意不同寬度（100/300/150px）的
+   合成圖驗證此規則（避免同寬 tautology）：
+   - 4 條分別驗證 outputMode 的 4 種選項（原始/2x/3x/固定寬3000px）：斷言最終畫布寬高
+     公式正確、三個色段像素顏色正確對應來源圖、置中留白處確實是白色。
+   - 1 條驗證**實際下載的 PNG 檔案**（非僅記憶體中的 canvas）：攔截 download 事件、
+     讀本機下載檔案位元組轉 base64、用 `data:` URL 在頁面內讀回（`img-src` 本來就允許
+     `data:`，不需弱化 CSP；`data:` 來源不會 taint canvas）驗證尺寸與像素正確。
+3. **`tests/touch.spec.ts`**（新增，4 條）：真正的 `TouchEvent`（非滑鼠事件模擬）驅動裁切
+   互動，對應已修 bug#2「手機拖拽紅框」：
+   - 觸控拖曳裁切框本體＋驗證 `touch-action:none` computed style 仍在（bug#2 迴歸線）
+   - 觸控依序觸發全部 8 個方向縮放把手（含推導每個把手在「全選邊界」下該往哪個方向拖才會
+     真的縮小，而非隨意套同一組座標差）
+   - 用上下雙色合成圖驗證觸控裁切後最終產出**只含裁到的那個色段**，不只是尺寸數字對
+   - 調整拼接順序後驗證最終拼接產出色帶順序真的跟著換（既有測試③只驗證 cropData 有保留，
+     沒驗證到最終視覺結果；本專案排序介面實際上是「拼接順序」下拉選單，程式碼裡沒有縮圖
+     拖曳排序元件，如實依現有 UI 測試，未杜撰不存在的功能）
+4. **`tests/pwa.spec.ts`**（擴充，+2 條）：離線模式下上傳＋拼接全流程可用（純前端邏輯不需
+   網路）；`CACHE_NAME` 離線前後一致且測試流程本身不變動 `sw.js`／`manifest.json`
+   （讀檔內容前後 diff 比對佐證）。
+5. **`tests/mobile.spec.ts`**（新增，3 條）：375px 視窗（iPhone SE 級別）—上傳區域可見、
+   拼接按鈕可互動、預覽區不溢出視窗（無橫向捲動）；檔名含中文＋空白＋特殊字元不破版；
+   `escapeHtml` XSS 迴歸補一個 `<img onerror=...>` 變種（既有測試⑦只測了 `<script>`）。
+
+**沒發現真 bug**：全部是測試補強。過程中兩次「失敗」都是測試本身寫錯（選錯 CSS 選擇器、
+誤判 8 向縮放把手在「全選邊界」下該往哪個方向拖曳才會產生變化），修正測試後即通過，
+不是 `index.html` 的行為有問題——這反而佐證了邊界夾限（`Math.min(maxWidth-x, ...)`）
+是刻意且正確的設計。
+
+## 測試結果（本輪）
+- 基線：`npx playwright test` 19 passed
+- 交付後：`npx playwright test` **33 passed**（19 + 新增 14：品質5＋觸控4＋PWA+2＋手機3）
+- `--repeat-each=3`：99 次執行全綠，無 flaky
+
+## 上一輪交付（2026-08-07，8 項 UX/品質改善）
 1. **Meta description + OG tags**：加入 `<meta name="description">` 與 Open Graph 標籤，
    提升 GitHub Pages 搜尋與分享預覽效果。
 2. **桌面拖放上傳**：上傳區域支援 HTML5 drag-and-drop，拖入時邊框變綠色提示，
@@ -54,7 +99,7 @@
 ## 狀態
 - 已完成：核心功能（上傳／裁切／換序／垂直拼接），8 個已修 bug 全數保留未回歸（見 index.html 開頭註解）
 - 已完成：兩項資安補強 —— CSP meta、張數／像素上限（畫面內 toast 阻擋，非 alert）
-- 已完成：Playwright 十九項驗證（原 10 條 stitch + 4 條 PWA + 新增 5 條 UX），實跑全綠
+- 已完成：Playwright 三十三項驗證（stitch 15 + pwa 6 + quality 5 + touch 4 + mobile 3），實跑全綠
 - 已完成：PWA（manifest／icons／service worker／離線可用）
 - 已完成：UX 打磨（拖放上傳、裁切暗化、進度條、下載、分享、鍵盤無障礙、降級處理）
 
@@ -69,7 +114,12 @@
 
 ## Playwright 驗收（npm test / npx playwright test）
 - 環境：`@playwright/test` + chromium；`playwright.config.ts`（testDir=tests, chromium, webServer 供 pwa.spec.ts）
-- 19 條測試（stitch.spec.ts 15 條 + pwa.spec.ts 4 條），全綠
+- 33 條測試，全綠：
+  - `stitch.spec.ts` 15 條（互動流程 + 8 個已修 bug 迴歸）
+  - `pwa.spec.ts` 6 條（manifest／SW 註冊／離線載入／離線上傳拼接／CACHE_NAME 版本一致）
+  - `quality.spec.ts` 5 條（拼接輸出像素級驗證，含 4 種 outputMode ＋ 下載檔案讀回驗證）
+  - `touch.spec.ts` 4 條（真實 TouchEvent 驅動裁切拖曳／8 向縮放／裁切範圍／換序後輸出）
+  - `mobile.spec.ts` 3 條（375px 版面／特殊檔名／escapeHtml XSS 迴歸補充）
 
 ## 下一步（接手的人從這裡開始）
 1. 階段 2 GitHub Pages 部署已完成，網址 https://miku4ocean.github.io/image-stitcher/

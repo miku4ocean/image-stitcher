@@ -1,8 +1,52 @@
 # HANDOFF — image-stitcher
-更新：2026-08-17／claude code
+更新：2026-09-04／claude code
 
 ## 目前目標
 階段 3（PWA）已完成，UX 打磨已完成。下一步：階段 4（Tauri）仍待使用者確認，不在本次範圍。
+
+## 本輪交付（2026-09-04，首輪深度偵錯：6 個真 bug，測試 33 → 44 條）
+前幾輪都是「補測試沒發現真 bug」，本輪改用擬真流程逐項驗真實產出（Canvas getImageData 取像素、
+實際下載檔案、真滑鼠／觸控事件、量測版面矩形），挖出 6 個「測試全綠但產品其實壞掉」的 bug。
+全部先寫會紅的測試證明症狀，再修到綠（新測試集中在 `tests/deep-debug.spec.ts`）。
+
+1. **輸出畫布超過瀏覽器上限 → 靜默產出全空白圖**（最嚴重）。4 張 300x2200 的窄長截圖
+   （完全在工具自訂的張數／單張／總像素上限內）配預設的「固定寬度 3000px」→ 畫布 3000x88000。
+   Chromium 單邊上限實測 65535（65536 就爆），超過時 canvas 尺寸讀起來正常、繪圖不拋錯，
+   但像素全透明、`toBlob` 回 null → 結果區一片空白、按下載毫無反應、零錯誤訊息。
+   修法：`MAX_CANVAS_SIDE`/`MAX_CANVAS_AREA` 夾限 scaleFactor 等比例縮小 + toast 告知縮放比例；
+   `downloadResult` 的 `if (!blob) return` 也補上失敗提示（原本是靜默吞掉）。
+2. **裁切框可被拖出圖片邊界**：`handleDrag` 的 n/nw/ne/w/sw 只夾限 x/y，寬高卻用
+   `width - dx` 無上限增加。預設全選狀態下把上緣把手往上拖 100px（很自然的動作），
+   裁切框高度就超出圖片下緣 → 產出多一條幽靈白帶，資訊列還顯示比原圖大的尺寸（200x250 vs 200x200）。
+   修法：改成「固定邊反推寬高」（拖左緣時右緣不動）。
+3. **`totalPixelSum` 只加不減**：`handleFiles` 是整批取代但總像素沒歸零，重選幾輪後
+   即使畫面上只有幾張小圖也會被自己的舊帳以「圖片總像素過大」擋掉。修法：`checkAndAddFiles`
+   加 `replaceAll` 參數，整批取代時從 0 重算。
+4. **壞圖被靜默略過**：損毀圖片的卡片永遠停在「等待圖片載入...」（沒有 `img.onerror`），
+   拼接時被跳過只有 console.warn，畫面上完全沒提示 → 使用者拿到「少一張但看起來正常」的成品。
+   修法：`markCropItemFailed()` 標示該張卡片（用 textContent，天然免疫 XSS）＋拼接後 toast 略過張數。
+5. **預覽圖被拉伸變形**：`.preview-img` 同時有 `width:100%` 與 `max-height:400px`，
+   width 是確定值時 max-height 只砍高度不等比縮寬度 → 1170x2532 的手機截圖（本工具最主要情境）
+   在桌面被畫成 1132x400，長寬比 0.46→2.83（橫向拉伸約 6 倍），使用者是看著變形的圖在拉裁切框。
+   修法：圖片只留 `max-width/max-height`，容器改 `width:fit-content; max-width:100%`（裁切框與圖片
+   仍精準對齊，已用矩形量測驗證）。**連帶調整**：`stitch.spec.ts` ⑤ 的輸入圖改成 1200x400
+   （200x150 的 fixture 修好後不再被放大到容器寬，縮視窗不會變小，測不到 resize 重算路徑），
+   斷言一字未改。
+6. **提示訊息裡的檔名雙重跳脫**：`showToast` 用 textContent，呼叫端卻又 escapeHtml 一次，
+   檔名含 `&<>` 會顯示成 `a&amp;b&lt;c&gt;.png`。修法：移除多餘的 escapeHtml（卡片上的仍保留）。
+
+**反證（不是 bug，已寫測試鎖住）**：
+- **EXIF 方向其實是對的**：舊文件寫「無 EXIF 方向處理（iPhone 直拍可能旋轉）」不成立。
+  手工組一張 Orientation=6 的 JPEG 實測，`naturalWidth/Height` 與 `drawImage` 取樣都已轉正
+  （現代瀏覽器 `image-orientation:from-image` 是預設值），預覽／裁切換算／輸出三者一致。
+  測試已鎖住此行為，**日後不要照舊文件再補一次手動旋轉，會變成轉兩次**。
+- **拖放高亮不會閃爍**：`dragleave` 進到子元素時雖會移除 `.drag-over`，但子元素的 `dragover`
+  會在同一個 task 內冒泡回上傳區重新加上，畫面上不會閃，屬非問題。
+- **SW cache-first 不會自動更新 index.html** 是文件明載的刻意設計（版號手動 +1），
+  非 bug；但屬部署流程風險——改 index.html 後若忘了把 `CACHE_NAME` 版號 +1，
+  回訪使用者會一直停在舊版。建議日後在部署 checklist 明列這一步。
+
+測試：33 → 44 條（新增 11：deep-debug.spec.ts），`--repeat-each=2` 88 次執行全綠、無 flaky。
 
 ## 本輪交付（2026-08-17，QA 深化：補齊拼接品質／觸控／PWA離線／手機版面四大類測試）
 既有 19 條測試只涵蓋互動流程與 8 個已修 bug 的迴歸，**完全沒有像素級驗證拼接輸出、

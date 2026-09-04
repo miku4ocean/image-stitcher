@@ -26,8 +26,9 @@
 【已知限制（留給後續階段）】
 - 已補：CSP meta ＋ 圖片數量/單張/總像素上限（畫面內 toast 阻擋，見 head 的
   Content-Security-Policy 與 script 內 MAX_FILES / MAX_SINGLE_PIXELS / MAX_TOTAL_PIXELS）
-- 無 EXIF 方向處理（iPhone 直拍可能旋轉；可用 createImageBitmap
-  的 imageOrientation:'from-image' 改寫 cropAndLoadImage）
+- EXIF 方向：舊註記寫「無處理」已不成立，2026-09-04 實測（tests/deep-debug.spec.ts 的
+  反證測試）現代瀏覽器 <img> 解碼預設就是 image-orientation:from-image，
+  naturalWidth/Height 與 drawImage 取樣都已轉正，**不要再手動旋轉一次**
 - 「下載 PNG」已依使用者需求移除，僅保留繼續合併；若日後恢復
   請用 canvas.toBlob 而非 toDataURL（記憶體較省）
 - Claude.ai artifact 沙箱的 SecurityError/cookie 訊息是環境噪音
@@ -94,8 +95,12 @@ image-stitcher/
         .position-control label { color: #2c3e50; margin-right: 8px; font-weight: 500; }
         .position-control select { padding: 4px 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1em; }
         .position-control small { color: #666; margin-left: 10px; }
-        .image-preview { position: relative; display: inline-block; border: 2px solid #bdc3c7; border-radius: 8px; overflow: hidden; background: #f8f9fa; width: 100%; }
-        .preview-img { max-width: 100%; max-height: 400px; display: block; width: 100%; }
+        /* 容器貼齊圖片（fit-content）＋ max-width 防溢出；圖片只用 max-* 限制，
+           不設 width:100%——width 是確定值時 max-height 只會砍高度不會等比縮寬度，
+           會把圖片硬拉成「容器寬 x 400」（例：1170x2532 的手機截圖被畫成 1132x400，
+           橫向拉伸約 6 倍），使用者等於看著一張變形的圖在拉裁切框。 */
+        .image-preview { position: relative; display: inline-block; border: 2px solid #bdc3c7; border-radius: 8px; overflow: hidden; background: #f8f9fa; width: fit-content; max-width: 100%; }
+        .preview-img { max-width: 100%; max-height: 400px; display: block; }
         .crop-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         /* touch-action:none 是手機拖拽的關鍵，勿移除 */
         /* box-shadow 暗化裁切框外的區域，讓保留範圍更直覺（mockup 建議的「可加強」項） */
@@ -207,6 +212,13 @@ var MAX_SINGLE_PIXELS = 4000 * 4000;   // 單張上限：4000 x 4000 px（16,000
 var MAX_TOTAL_PIXELS = 80 * 1000000;   // 總像素上限：80,000,000 px（約 10 張 8MP 圖片的總合）
 var totalPixelSum = 0;                 // 目前已納入 selectedFiles 的像素總和
 
+// 輸出畫布的瀏覽器硬上限。實測 Chromium：單邊 65535 可用、65536 就會拿到一張
+// 「尺寸讀起來正常、繪圖不拋錯、但像素全透明」的空白畫布，且 toBlob 直接回傳 null
+// （＝結果區一片空白、按下載毫無反應，而且沒有任何錯誤訊息）。
+// 窄長截圖 + 「固定寬度 3000px」很容易踩到：例如 4 張 300x2200 → 3000 x 88000。
+var MAX_CANVAS_SIDE = 65535;
+var MAX_CANVAS_AREA = 268435456;       // 2^28 px，主流瀏覽器的單張 canvas 總面積上限
+
 // 防止檔名含 HTML 特殊字元破壞版面
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function(c) {
@@ -246,8 +258,10 @@ function getImagePixelCount(file) {
 }
 
 // 檢查張數／單張像素／總像素上限，超過則顯示 toast 並阻擋這批檔案（不進入裁切流程）
-// 通過後才真正把檔案併入 selectedFiles，交由 callback 接手畫面重建
-function checkAndAddFiles(files, existingCount, onPass) {
+// 通過後才真正把檔案併入 selectedFiles，交由 callback 接手畫面重建。
+// replaceAll=true 代表這批是「整批取代」（重新選檔），總像素要從 0 重算——
+// 否則舊帳會一直累加，重選幾輪之後即使畫面上只有幾張小圖也會被自己的舊帳誤擋。
+function checkAndAddFiles(files, existingCount, onPass, replaceAll) {
     if (existingCount + files.length > MAX_FILES) {
         showToast('📦 圖片數量過多，建議一次不超過 ' + MAX_FILES + ' 張，避免記憶體不足');
         return;
@@ -255,16 +269,18 @@ function checkAndAddFiles(files, existingCount, onPass) {
     Promise.all(files.map(getImagePixelCount)).then(function(pixelCounts) {
         for (var i = 0; i < pixelCounts.length; i++) {
             if (pixelCounts[i] > MAX_SINGLE_PIXELS) {
-                showToast('📦 「' + escapeHtml(files[i].name) + '」尺寸過大，單張圖片建議不超過 4000 x 4000 px');
+                // showToast 是用 textContent 顯示，這裡再 escapeHtml 會變成雙重跳脫（檔名顯示成 &amp;）
+                showToast('📦 「' + files[i].name + '」尺寸過大，單張圖片建議不超過 4000 x 4000 px');
                 return;
             }
         }
+        var baseSum = replaceAll ? 0 : totalPixelSum;
         var newSum = pixelCounts.reduce(function(a, b) { return a + b; }, 0);
-        if (totalPixelSum + newSum > MAX_TOTAL_PIXELS) {
+        if (baseSum + newSum > MAX_TOTAL_PIXELS) {
             showToast('📦 圖片總像素過大，建議減少張數或使用較小的圖片，避免記憶體不足');
             return;
         }
-        totalPixelSum += newSum;
+        totalPixelSum = baseSum + newSum;
         onPass();
     });
 }
@@ -287,11 +303,12 @@ function handleFiles(fileList) {
     files.sort(function(a, b) {
         return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     });
+    // 第四個參數 true＝整批取代，總像素從 0 重算
     checkAndAddFiles(files, 0, function() {
         selectedFiles = files;
         cropData = [];
         setupCropInterface(false);
-    });
+    }, true);
 }
 
 // preserve=true 時保留既有裁切設定（換順序、新增圖片用）
@@ -321,7 +338,34 @@ function setupCropInterface(preserve) {
 function loadImageForCrop(file, index) {
     var reader = new FileReader();
     reader.onload = function(e) { createCropItem(e.target.result, file.name, index); };
+    // 讀檔失敗時也要有卡片與明確訊息，否則佔位節點會永遠是一塊空白，使用者不知道發生什麼事
+    reader.onerror = function() { markCropItemFailed(index, file.name); };
     reader.readAsDataURL(file);
+}
+
+// 讀檔或解碼失敗時標示該張圖片，避免卡片永遠停在「等待圖片載入...」而被使用者當成正常
+function markCropItemFailed(index, fileName) {
+    var info = document.getElementById('info-' + index);
+    if (info) {
+        info.textContent = '⚠️ 這張圖片無法讀取，拼接時會自動略過';
+        info.style.color = '#a5342a';
+        return;
+    }
+    var placeholder = document.getElementById('crop-item-' + index);
+    if (!placeholder) return;
+    var item = document.createElement('div');
+    item.className = 'crop-item';
+    var name = document.createElement('div');
+    name.className = 'crop-name';
+    name.textContent = '位置 ' + (index + 1) + ': ' + fileName; // textContent：檔名不會被當 HTML 解析
+    var failInfo = document.createElement('div');
+    failInfo.className = 'crop-info';
+    failInfo.id = 'info-' + index;
+    failInfo.textContent = '⚠️ 這張圖片無法讀取，拼接時會自動略過';
+    failInfo.style.color = '#a5342a';
+    item.appendChild(name);
+    item.appendChild(failInfo);
+    placeholder.replaceWith(item);
 }
 
 function createCropItem(imageSrc, fileName, index) {
@@ -372,6 +416,8 @@ function createCropItem(imageSrc, fileName, index) {
     var img = document.getElementById('img-' + index);
     if (img) {
         img.onload = function() { initializeCrop(index); };
+        // 解碼失敗（損毀檔、假副檔名）要明講，不能讓卡片永遠停在「等待圖片載入...」
+        img.onerror = function() { markCropItemFailed(index, fileName); };
         if (img.complete) initializeCrop(index);
     }
 }
@@ -473,6 +519,19 @@ function handleDrag(e) {
     var newRect = Object.assign({}, currentDragging.startRect);
     var maxWidth = data.displayWidth;
     var maxHeight = data.displayHeight;
+    // 拖左緣／上緣時，固定不動的是右緣／下緣：先夾限被拖的那一邊，再由固定邊反推寬高。
+    // （原本寫成 width = width - dx，x 有夾限但寬高沒有上限，往圖片外拖就會把裁切框
+    //   撐出圖片範圍，產出多一條幽靈空白帶，且資訊列會顯示比原圖還大的尺寸。）
+    var fixedRight = currentDragging.startRect.x + currentDragging.startRect.width;
+    var fixedBottom = currentDragging.startRect.y + currentDragging.startRect.height;
+    function dragLeftEdge() {
+        newRect.x = Math.max(0, Math.min(fixedRight - 20, currentDragging.startRect.x + dx));
+        newRect.width = fixedRight - newRect.x;
+    }
+    function dragTopEdge() {
+        newRect.y = Math.max(0, Math.min(fixedBottom - 20, currentDragging.startRect.y + dy));
+        newRect.height = fixedBottom - newRect.y;
+    }
     switch (currentDragging.type) {
         case 'move':
             newRect.x = Math.max(0, Math.min(maxWidth - newRect.width, newRect.x + dx));
@@ -483,31 +542,25 @@ function handleDrag(e) {
             newRect.height = Math.max(20, Math.min(maxHeight - newRect.y, newRect.height + dy));
             break;
         case 'nw':
-            newRect.x = Math.max(0, Math.min(newRect.x + newRect.width - 20, newRect.x + dx));
-            newRect.y = Math.max(0, Math.min(newRect.y + newRect.height - 20, newRect.y + dy));
-            newRect.width = Math.max(20, newRect.width - dx);
-            newRect.height = Math.max(20, newRect.height - dy);
+            dragLeftEdge();
+            dragTopEdge();
             break;
         case 'ne':
-            newRect.y = Math.max(0, Math.min(newRect.y + newRect.height - 20, newRect.y + dy));
-            newRect.width = Math.max(20, Math.min(maxWidth - newRect.x, newRect.width + dx));
-            newRect.height = Math.max(20, newRect.height - dy);
+            dragTopEdge();
+            newRect.width = Math.max(20, Math.min(maxWidth - newRect.x, currentDragging.startRect.width + dx));
             break;
         case 'sw':
-            newRect.x = Math.max(0, Math.min(newRect.x + newRect.width - 20, newRect.x + dx));
-            newRect.width = Math.max(20, newRect.width - dx);
-            newRect.height = Math.max(20, Math.min(maxHeight - newRect.y, newRect.height + dy));
+            dragLeftEdge();
+            newRect.height = Math.max(20, Math.min(maxHeight - newRect.y, currentDragging.startRect.height + dy));
             break;
         case 'n':
-            newRect.y = Math.max(0, Math.min(newRect.y + newRect.height - 20, newRect.y + dy));
-            newRect.height = Math.max(20, newRect.height - dy);
+            dragTopEdge();
             break;
         case 's':
             newRect.height = Math.max(20, Math.min(maxHeight - newRect.y, newRect.height + dy));
             break;
         case 'w':
-            newRect.x = Math.max(0, Math.min(newRect.x + newRect.width - 20, newRect.x + dx));
-            newRect.width = Math.max(20, newRect.width - dx);
+            dragLeftEdge();
             break;
         case 'e':
             newRect.width = Math.max(20, Math.min(maxWidth - newRect.x, newRect.width + dx));
@@ -659,11 +712,13 @@ function cropAndLoadImage(index, callback) {
 // 由上到下依序拼接：索引 0 在最上方
 function stitchCroppedImages(canvases) {
     var outputMode = document.getElementById('outputMode').value;
-    var maxWidth = 0, totalHeight = 0, scaleFactor = 1;
+    var maxWidth = 0, totalHeight = 0, scaleFactor = 1, skipped = 0;
     for (var i = 0; i < canvases.length; i++) {
         if (canvases[i]) {
             maxWidth = Math.max(maxWidth, canvases[i].width);
             totalHeight += canvases[i].height;
+        } else {
+            skipped++;
         }
     }
     if (maxWidth === 0) {
@@ -678,6 +733,21 @@ function stitchCroppedImages(canvases) {
     }
     var finalWidth = Math.round(maxWidth * scaleFactor);
     var finalHeight = Math.round(totalHeight * scaleFactor);
+    // 超過瀏覽器 canvas 上限時等比例縮小，並明講縮了多少——
+    // 否則會產出一張「看起來拼好了、其實全透明」的空白圖，連下載都靜默失敗
+    var limitRatio = Math.min(
+        1,
+        MAX_CANVAS_SIDE / finalWidth,
+        MAX_CANVAS_SIDE / finalHeight,
+        Math.sqrt(MAX_CANVAS_AREA / (finalWidth * finalHeight))
+    );
+    if (limitRatio < 1) {
+        scaleFactor = scaleFactor * limitRatio;
+        finalWidth = Math.min(MAX_CANVAS_SIDE, Math.round(maxWidth * scaleFactor));
+        finalHeight = Math.min(MAX_CANVAS_SIDE, Math.round(totalHeight * scaleFactor));
+        showToast('📐 拼接尺寸超過瀏覽器上限，已自動等比例縮小為約 ' +
+            Math.round(limitRatio * 100) + '%，以確保輸出的是真的圖片而不是空白');
+    }
     var resultCanvas = document.getElementById('resultCanvas');
     var ctx = resultCanvas.getContext('2d');
     resultCanvas.width = finalWidth;
@@ -694,6 +764,10 @@ function stitchCroppedImages(canvases) {
             ctx.drawImage(canvas, x, currentY, scaledWidth, scaledHeight);
             currentY += scaledHeight;
         }
+    }
+    // 有圖片被略過時一定要講：不然使用者拿到的是「少了幾張、但看起來很正常」的成品
+    if (skipped > 0) {
+        showToast('⚠️ 有 ' + skipped + ' 張圖片無法處理，已略過，拼接結果不含這些圖片', true);
     }
     document.getElementById('resultArea').style.display = 'block';
     // 手機支援 Web Share API 且可分享檔案時，顯示分享按鈕
@@ -720,7 +794,11 @@ function downloadResult() {
     var canvas = document.getElementById('resultCanvas');
     if (!canvas) return;
     canvas.toBlob(function(blob) {
-        if (!blob) return;
+        // toBlob 失敗（例如畫布過大）時原本什麼都不做，使用者按了下載卻毫無反應也沒訊息
+        if (!blob) {
+            showToast('⚠️ 圖片產生失敗，可能是尺寸過大，請改用較小的輸出設定再試一次', true);
+            return;
+        }
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
         var now = new Date();

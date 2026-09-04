@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import { makeSolidPng } from './fixtures/pngHelper';
 
 const FIX = (name: string) => path.join('tests/fixtures', name);
 const NUM_FILES = Array.from({ length: 10 }, (_, i) => FIX(`${i + 1}.png`));
@@ -158,7 +159,12 @@ test.describe('圖片拼接工具', () => {
   test('⑤ 視窗 resize 後裁切框座標仍對得準', async ({ page }) => {
     await page.setViewportSize({ width: 1000, height: 900 });
     await page.goto('file://' + path.resolve('index.html'));
-    await page.setInputFiles('#fileInput', [FIX('1.png')]);
+    // 要用「比容器還寬」的圖，縮視窗時才會真的被 max-width:100% 等比例縮小，
+    // 才測得到 bug#6 的 resize 重算路徑。固定 fixture 是 200x150，預覽已維持原始比例
+    // 不再被拉伸放大到容器寬（見深度偵錯 bug⑤），200px 的圖在兩個視窗寬度下都是原尺寸。
+    await page.setInputFiles('#fileInput', [
+      { name: 'wide.png', mimeType: 'image/png', buffer: makeSolidPng(1200, 400, [120, 160, 200]) },
+    ]);
     await page.waitForSelector('#selection-0');
 
     const before = await page.locator('#selection-0').evaluate((el) => el.getBoundingClientRect());

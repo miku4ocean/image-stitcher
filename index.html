@@ -68,44 +68,56 @@ image-stitcher/
     <title>圖片拼接工具 - 手動裁切版</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, "Microsoft JhengHei", sans-serif; background: #00CED1; min-height: 100vh; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 2.2em; font-weight: 300; }
-        .upload-area { border: 3px solid #3498db; border-radius: 15px; padding: 40px; text-align: center; margin-bottom: 30px; background: rgba(52,152,219,0.05); cursor: pointer; transition: all 0.3s ease; }
-        .upload-area:hover { border-color: #2980b9; background: rgba(52,152,219,0.1); }
-        .upload-area.drag-over { border-color: #27ae60; background: rgba(39,174,96,0.15); border-style: solid; }
-        .upload-area:focus-visible { outline: 3px solid #3498db; outline-offset: 2px; }
-        .upload-text { color: #34495e; font-size: 1.2em; margin-bottom: 15px; }
-        .upload-btn { background: linear-gradient(45deg,#3498db,#2980b9); color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 1.1em; }
+        :root {
+            --brand: #059669;
+            --brand-dark: #047857;
+            --brand-darker: #065f46;
+            --brand-light: #d1fae5;
+            --brand-tint: #ecfdf5;
+            --ink: #1A1A1A;
+            --ink-soft: #4b5a55;
+            --paper: #FAFDFB;
+            --line: #d8ebe3;
+        }
+        body { font-family: "Microsoft JhengHei", "PingFang TC", Arial, sans-serif; color: var(--ink); background: var(--paper); background-image: radial-gradient(circle at 12% 8%, rgba(5,150,105,0.07), transparent 42%), radial-gradient(circle at 92% 92%, rgba(5,150,105,0.06), transparent 40%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: #ffffff; border-radius: 20px; padding: 30px; border: 1px solid var(--line); box-shadow: 0 20px 45px rgba(6,95,70,0.08); }
+        h1 { text-align: center; color: var(--brand-darker); margin-bottom: 30px; font-size: 2.2em; font-weight: 600; letter-spacing: 0.01em; }
+        .upload-area { border: 2px dashed #6fcf9c; border-radius: 16px; padding: 40px; text-align: center; margin-bottom: 30px; background: var(--brand-tint); cursor: pointer; transition: all 0.25s ease; }
+        .upload-area:hover { border-color: var(--brand); background: var(--brand-light); }
+        .upload-area.drag-over { border-color: var(--brand-dark); border-style: solid; background: var(--brand-light); box-shadow: 0 0 0 4px rgba(5,150,105,0.12) inset; }
+        .upload-area:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+        .upload-text { color: var(--ink-soft); font-size: 1.2em; margin-bottom: 15px; }
+        .upload-btn { background: var(--brand); color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 1.1em; font-weight: 600; box-shadow: 0 4px 14px rgba(5,150,105,0.25); transition: background 0.2s ease, transform 0.15s ease; }
+        .upload-btn:hover { background: var(--brand-dark); transform: translateY(-1px); }
         .file-input { display: none; }
         .crop-area { margin: 30px 0; display: none; }
-        .crop-title { color: #2c3e50; font-size: 1.5em; margin-bottom: 20px; font-weight: 500; }
+        .crop-title { color: var(--brand-darker); font-size: 1.5em; margin-bottom: 20px; font-weight: 600; }
         .add-more-section { text-align: center; margin-bottom: 20px; }
-        .add-more-btn { background: #f39c12; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1em; }
-        .add-more-btn:hover { background: #e67e22; }
+        .add-more-btn { background: #ffffff; color: var(--brand-dark); border: 2px solid var(--brand); padding: 9px 20px; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.2s ease; }
+        .add-more-btn:hover { background: var(--brand); color: white; }
         /* 垂直排列：畫面順序 = 拼接順序（上到下） */
         .image-crop-container { display: flex; flex-direction: column; gap: 30px; margin-bottom: 30px; }
-        .crop-item { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); border: 2px solid #ecf0f1; }
+        .crop-item { background: #ffffff; border-radius: 15px; padding: 20px; box-shadow: 0 6px 18px rgba(6,95,70,0.07); border: 1px solid var(--line); }
         .crop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 8px; }
-        .crop-name { font-weight: 600; color: #2c3e50; font-size: 1.1em; word-break: break-all; }
+        .crop-name { font-weight: 600; color: var(--ink); font-size: 1.1em; word-break: break-all; }
         .crop-controls { display: flex; gap: 5px; }
-        .crop-btn { background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9em; }
-        .crop-btn:hover { background: #2980b9; }
-        .position-control { text-align: center; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
-        .position-control label { color: #2c3e50; margin-right: 8px; font-weight: 500; }
-        .position-control select { padding: 4px 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1em; }
-        .position-control small { color: #666; margin-left: 10px; }
+        .crop-btn { background: var(--brand-tint); color: var(--brand-dark); border: 1px solid var(--brand-light); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 600; transition: all 0.2s ease; }
+        .crop-btn:hover { background: var(--brand); color: white; border-color: var(--brand); }
+        .position-control { text-align: center; margin-bottom: 15px; padding: 10px; background: var(--brand-tint); border-radius: 8px; }
+        .position-control label { color: var(--ink); margin-right: 8px; font-weight: 500; }
+        .position-control select { padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 1em; background: #ffffff; color: var(--ink); }
+        .position-control small { color: var(--ink-soft); margin-left: 10px; }
         /* 容器貼齊圖片（fit-content）＋ max-width 防溢出；圖片只用 max-* 限制，
            不設 width:100%——width 是確定值時 max-height 只會砍高度不會等比縮寬度，
            會把圖片硬拉成「容器寬 x 400」（例：1170x2532 的手機截圖被畫成 1132x400，
            橫向拉伸約 6 倍），使用者等於看著一張變形的圖在拉裁切框。 */
-        .image-preview { position: relative; display: inline-block; border: 2px solid #bdc3c7; border-radius: 8px; overflow: hidden; background: #f8f9fa; width: fit-content; max-width: 100%; }
+        .image-preview { position: relative; display: inline-block; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: #f4f9f6; width: fit-content; max-width: 100%; }
         .preview-img { max-width: 100%; max-height: 400px; display: block; }
         .crop-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         /* touch-action:none 是手機拖拽的關鍵，勿移除 */
         /* box-shadow 暗化裁切框外的區域，讓保留範圍更直覺（mockup 建議的「可加強」項） */
-        .crop-selection { position: absolute; border: 3px solid #e74c3c; background: transparent; pointer-events: all; cursor: move; min-width: 20px; min-height: 20px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); }
-        .crop-handle { position: absolute; width: 12px; height: 12px; background: #e74c3c; border: 2px solid white; border-radius: 50%; cursor: pointer; touch-action: none; }
+        .crop-selection { position: absolute; border: 3px solid var(--brand); background: transparent; pointer-events: all; cursor: move; min-width: 20px; min-height: 20px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; box-shadow: 0 0 0 9999px rgba(6,32,23,0.5); }
+        .crop-handle { position: absolute; width: 12px; height: 12px; background: var(--brand); border: 2px solid white; border-radius: 50%; cursor: pointer; touch-action: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         .crop-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
         .crop-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
         .crop-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
@@ -114,21 +126,23 @@ image-stitcher/
         .crop-handle.s { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
         .crop-handle.w { top: 50%; left: -6px; transform: translateY(-50%); cursor: w-resize; }
         .crop-handle.e { top: 50%; right: -6px; transform: translateY(-50%); cursor: e-resize; }
-        .crop-info { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.9em; color: #6c757d; text-align: center; }
+        .crop-info { margin-top: 10px; padding: 10px; background: var(--brand-tint); border-radius: 6px; font-size: 0.9em; color: var(--ink-soft); text-align: center; }
         .process-section { text-align: center; margin: 30px 0; display: none; }
         .output-controls { margin-bottom: 20px; }
-        .output-controls label { color: #2c3e50; font-weight: 500; margin-right: 15px; }
-        .output-controls select { padding: 8px 12px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 1em; }
-        .process-btn { background: linear-gradient(45deg,#27ae60,#2ecc71); color: white; border: none; padding: 15px 40px; border-radius: 25px; cursor: pointer; font-size: 1.2em; font-weight: 500; box-shadow: 0 4px 15px rgba(39,174,96,0.3); }
+        .output-controls label { color: var(--ink); font-weight: 500; margin-right: 15px; }
+        .output-controls select { padding: 8px 12px; border: 2px solid var(--line); border-radius: 8px; font-size: 1em; background: #ffffff; color: var(--ink); }
+        .process-btn { background: var(--brand); color: white; border: none; padding: 15px 40px; border-radius: 25px; cursor: pointer; font-size: 1.2em; font-weight: 600; box-shadow: 0 6px 18px rgba(5,150,105,0.3); transition: background 0.2s ease, transform 0.15s ease; }
+        .process-btn:hover:not(:disabled) { background: var(--brand-dark); transform: translateY(-1px); }
         .process-btn:disabled { opacity: 0.6; cursor: wait; }
-        .progress-bar { display: none; margin: 12px auto 0; max-width: 300px; height: 8px; background: #e3e8ee; border-radius: 99px; overflow: hidden; }
-        .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00CED1, #0FA3A6); border-radius: 99px; transition: width 0.3s ease; }
-        .progress-text { display: none; text-align: center; color: #6c7a89; font-size: 0.9em; margin-top: 8px; }
+        .progress-bar { display: none; margin: 12px auto 0; max-width: 300px; height: 8px; background: var(--brand-light); border-radius: 99px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: var(--brand); border-radius: 99px; transition: width 0.3s ease; }
+        .progress-text { display: none; text-align: center; color: var(--ink-soft); font-size: 0.9em; margin-top: 8px; }
         .result-area { margin-top: 30px; display: none; text-align: center; }
-        .result-canvas { max-width: 100%; border: 2px solid #ecf0f1; border-radius: 10px; margin: 20px 0; }
+        .result-canvas { max-width: 100%; border: 2px solid var(--line); border-radius: 10px; margin: 20px 0; box-shadow: 0 8px 24px rgba(6,95,70,0.1); }
         .download-btns { margin-top: 20px; }
-        .download-btn { background: linear-gradient(45deg,#3498db,#2980b9); color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-size: 1em; margin: 0 10px; }
-        .info-box { background: rgba(52,152,219,0.1); border-left: 4px solid #3498db; padding: 15px; border-radius: 5px; margin: 20px 0; color: #2c3e50; }
+        .download-btn { background: var(--brand); color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-size: 1em; font-weight: 600; margin: 0 10px; transition: background 0.2s ease, transform 0.15s ease; }
+        .download-btn:hover { background: var(--brand-dark); transform: translateY(-1px); }
+        .info-box { background: var(--brand-tint); border-left: 4px solid var(--brand); padding: 15px; border-radius: 5px; margin: 20px 0; color: var(--ink); }
         /* 記憶體上限提示（畫面內 toast，取代 alert）：黃色＝數量/尺寸超限，紅色＝檔案無效 */
         .limit-toast { display: none; margin: 15px 0; padding: 12px 16px; border-radius: 10px; font-size: 0.95em; text-align: center; background: #fff8e6; border: 1px solid #f3dca0; color: #8a6516; }
         .limit-toast.limit-toast-error { background: #fdeeec; border: 1px solid #f5c6c0; color: #a5342a; }

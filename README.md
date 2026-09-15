@@ -1,3 +1,5 @@
+[![CI](https://github.com/miku4ocean/image-stitcher/actions/workflows/ci.yml/badge.svg)](https://github.com/miku4ocean/image-stitcher/actions/workflows/ci.yml)
+
 # 圖片拼接工具（手動裁切版）
 
 純前端、零後端的截圖拼接工具。上傳多張截圖，逐張框選要保留的區域、調整順序後，垂直拼接成一張長圖。手機觸控為第一優先。
